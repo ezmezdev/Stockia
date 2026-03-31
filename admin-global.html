@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Stockia — Super Admin</title>
+  <!-- v3.0 -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/global.css?v=3.0">
+  <style>
+    .admin-header-bar {
+      background: linear-gradient(135deg, #1a2f6b 0%, #7c3aed 100%);
+      color: #fff; padding: 10px 16px; text-align: center;
+      font-size: 13px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .color-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+    .tab-bar { display: flex; gap: 4px; padding: 4px; background: var(--bg); border-radius: var(--r-lg); margin-bottom: 16px; }
+    .tab-btn {
+      flex: 1; padding: 9px 12px; border: none; background: none; cursor: pointer;
+      border-radius: var(--r-md); font-size: 13px; font-weight: 600;
+      color: var(--texto-suave); font-family: var(--font); transition: var(--transition);
+    }
+    .tab-btn.activo { background: #fff; color: var(--azul-nav); box-shadow: var(--sombra-sm); }
+    .tab-panel { display: none; }
+    .tab-panel.activo { display: block; }
+    .empresa-card-acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+    .info-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--borde); font-size: 13px; }
+    .info-row:last-child { border-bottom: none; }
+    .color-picker-wrap { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .color-opt { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: .15s; }
+    .color-opt.sel { border-color: var(--texto); }
+    .placeholder-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+  </style>
+</head>
+<body>
+  <div class="admin-header-bar">
+    🌐 <span>Panel de Super Administrador</span>
+  </div>
+
+  <div class="app-layout">
+    <header class="nav-header">
+      <a href="admin-global.html" class="nav-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 50" class="nav-logo-svg">
+          <text x="0" y="40" font-family="Poppins,sans-serif" font-weight="800" font-size="42" fill="white" letter-spacing="-1">St</text>
+          <g transform="translate(55,7)">
+            <rect x="0" y="12" width="26" height="18" rx="3" fill="white" opacity=".15"/>
+            <rect x="0" y="12" width="26" height="18" rx="3" fill="none" stroke="white" stroke-width="2.5"/>
+            <path d="M0 12 L5 5 L21 5 L26 12" fill="none" stroke="white" stroke-width="2.5" stroke-linejoin="round"/>
+            <line x1="5" y1="5" x2="7" y2="12" stroke="white" stroke-width="1.5" opacity=".6"/>
+            <line x1="21" y1="5" x2="19" y2="12" stroke="white" stroke-width="1.5" opacity=".6"/>
+            <line x1="13" y1="12" x2="13" y2="30" stroke="white" stroke-width="1.2" opacity=".4"/>
+          </g>
+          <text x="86" y="40" font-family="Poppins,sans-serif" font-weight="800" font-size="42" fill="white" letter-spacing="-1">ckia</text>
+        </svg>
+      </a>
+      <div class="nav-usuario" style="display:flex">
+        <div class="nav-usuario-info">
+          <div class="nav-usuario-nombre" id="navNombre">-</div>
+          <div class="nav-usuario-rol">Super Admin</div>
+        </div>
+        <button class="btn-salir" onclick="cerrarSesion()">🚪 Salir</button>
+      </div>
+      <button class="nav-hamburguesa" id="navHamburguesa" onclick="toggleMenu()" aria-label="Menú">
+        <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+      </button>
+    </header>
+
+    <nav class="nav-menu-movil" id="navMenuMovil">
+      <div class="usuario-info" id="menuUsuarioInfo">Cargando...</div>
+      <div class="separador"></div>
+      <button onclick="cerrarSesion()"><span class="icono">🚪</span> Salir</button>
+    </nav>
+    <div class="nav-overlay" id="navOverlay" onclick="cerrarMenu()"></div>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-titulo">🌐 Super Admin</h1>
+          <p class="page-subtitulo">Gestión global de Stockia</p>
+        </div>
+        <button class="btn btn-acento" onclick="abrirModal('modalNuevaEmpresa')">
+          ➕ Nueva empresa
+        </button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tab-bar">
+        <button class="tab-btn activo" onclick="cambiarTab('empresas')">🏢 Empresas</button>
+        <button class="tab-btn" onclick="cambiarTab('admins')">👤 Admins Globales</button>
+      </div>
+
+      <!-- TAB: Empresas -->
+      <div class="tab-panel activo" id="tabEmpresas">
+        <div class="empresas-grid" id="listaEmpresas">
+          <div class="cargando"><div class="spinner"></div><span>Cargando empresas...</span></div>
+        </div>
+      </div>
+
+      <!-- TAB: Admins globales -->
+      <div class="tab-panel" id="tabAdmins">
+        <div class="card">
+          <div class="card-titulo">👤 Administradores Globales</div>
+          <p class="texto-suave" style="font-size:13px;margin-bottom:16px">
+            Los admins globales acceden a todas las empresas y al panel de configuración.
+          </p>
+          <button class="btn btn-secundario btn-sm" onclick="abrirModal('modalNuevoAdmin')" style="margin-bottom:16px">
+            ➕ Agregar admin global
+          </button>
+          <div class="tabla-contenedor">
+            <table class="tabla">
+              <thead><tr><th>Nombre</th><th>Email</th><th>Estado</th><th>Acciones</th></tr></thead>
+              <tbody id="listaAdmins">
+                <tr><td colspan="4"><div class="cargando"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="app-footer">© <span class="anio-actual"></span> Stockia. Super Admin.</footer>
+  </div>
+
+  <!-- MODAL: Nueva empresa -->
+  <div class="modal-overlay" id="modalNuevaEmpresa">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-titulo">🏢 Nueva Empresa</div>
+        <button class="modal-cerrar" onclick="cerrarModal('modalNuevaEmpresa')">✕</button>
+      </div>
+      <div class="form-grupo">
+        <label class="form-label">Nombre de la empresa *</label>
+        <input type="text" class="form-input" id="empNombre" placeholder="Ej: Ropa El Centro">
+      </div>
+      <div class="form-grupo">
+        <label class="form-label">Slug (URL amigable) *</label>
+        <input type="text" class="form-input" id="empSlug" placeholder="ropa-el-centro" style="font-family:monospace">
+        <small class="texto-suave" style="font-size:11px">Solo letras minúsculas, números y guiones. Se genera automáticamente.</small>
+      </div>
+      <div class="form-grupo">
+        <label class="form-label">Color de la empresa</label>
+        <div class="color-picker-wrap" id="colorPicker">
+          <!-- generado por JS -->
+        </div>
+        <input type="hidden" id="empColor" value="#1e3a8a">
+      </div>
+      <div class="form-grupo">
+        <label class="form-label">Nombre del módulo de artículos</label>
+        <input type="text" class="form-input" id="empModuloNombre" placeholder="Ej: Productos, Prendas, Artículos">
+        <small class="texto-suave" style="font-size:11px">Qué vende esta empresa (se muestra en el menú)</small>
+      </div>
+      <div class="form-grupo">
+        <label class="form-label">Ícono del módulo</label>
+        <input type="text" class="form-input" id="empModuloIcono" placeholder="Ej: 👗 🏠 🥩 🔧" style="font-size:20px">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="cerrarModal('modalNuevaEmpresa')">Cancelar</button>
+        <button class="btn btn-acento" onclick="crearEmpresa()">✓ Crear empresa</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Editar empresa -->
+  <div class="modal-overlay" id="modalEditarEmpresa">
+    <div class="modal" style="max-height:95vh">
+      <div class="modal-header">
+        <div class="modal-titulo">⚙️ Editar Empresa</div>
+        <button class="modal-cerrar" onclick="cerrarModal('modalEditarEmpresa')">✕</button>
+      </div>
+      <input type="hidden" id="editEmpId">
+
+      <div class="form-grupo">
+        <label class="form-label">Nombre</label>
+        <input type="text" class="form-input" id="editEmpNombre">
+      </div>
+      <div class="form-grupo">
+        <label class="form-label">Color</label>
+        <div class="color-picker-wrap" id="colorPickerEdit"></div>
+        <input type="hidden" id="editEmpColor">
+      </div>
+
+      <div class="form-grupo">
+        <label class="form-label">Nombre del módulo de artículos</label>
+        <input type="text" class="form-input" id="editEmpModuloNombre">
+      </div>
+      <div class="form-grupo">
+        <label class="form-label">Ícono del módulo</label>
+        <input type="text" class="form-input" id="editEmpModuloIcono" style="font-size:20px">
+      </div>
+
+      <div class="form-grupo">
+        <label class="form-label">Textos de ejemplo del formulario de artículos</label>
+        <div class="placeholder-grid">
+          <div>
+            <label class="form-label" style="font-weight:500;font-size:12px">Nombre del artículo</label>
+            <input type="text" class="form-input" id="editPhNombre" placeholder="Ej: Camisa manga larga">
+          </div>
+          <div>
+            <label class="form-label" style="font-weight:500;font-size:12px">Descripción</label>
+            <input type="text" class="form-input" id="editPhDesc" placeholder="Descripción del artículo">
+          </div>
+          <div>
+            <label class="form-label" style="font-weight:500;font-size:12px">Código</label>
+            <input type="text" class="form-input" id="editPhCodigo" placeholder="Ej: ART-001">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-grupo">
+        <label class="form-label">Módulos habilitados</label>
+        <div class="modulos-grid" id="editModulos">
+          <!-- generado por JS -->
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="cerrarModal('modalEditarEmpresa')">Cancelar</button>
+        <button class="btn btn-acento" onclick="guardarEmpresa()">✓ Guardar cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Usuarios de empresa -->
+  <div class="modal-overlay" id="modalUsuariosEmpresa">
+    <div class="modal" style="max-height:95vh">
+      <div class="modal-header">
+        <div class="modal-titulo" id="modalUsuariosTitulo">👥 Usuarios</div>
+        <button class="modal-cerrar" onclick="cerrarModal('modalUsuariosEmpresa')">✕</button>
+      </div>
+      <input type="hidden" id="usuariosEmpId">
+      <button class="btn btn-secundario btn-sm" onclick="abrirCrearUsuario()" style="margin-bottom:14px">
+        ➕ Agregar usuario
+      </button>
+      <div id="listaUsuariosEmpresa">
+        <div class="cargando"><div class="spinner"></div></div>
+      </div>
+
+      <!-- Sub-form crear usuario -->
+      <div id="formCrearUsuario" style="display:none;margin-top:16px;border-top:1px solid var(--borde);padding-top:16px">
+        <div class="card-titulo" style="font-size:14px;margin-bottom:12px">➕ Nuevo usuario</div>
+        <div class="form-grupo">
+          <label class="form-label">Nombre completo</label>
+          <input type="text" class="form-input" id="nuNombre" placeholder="Juan Pérez">
+        </div>
+        <div class="form-grupo">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-input" id="nuEmail" placeholder="juan@empresa.com" inputmode="email">
+        </div>
+        <div class="form-grupo">
+          <label class="form-label">Contraseña</label>
+          <input type="text" class="form-input" id="nuPass" placeholder="Mínimo 8 caracteres" autocomplete="new-password">
+        </div>
+        <div class="form-grupo">
+          <label class="form-label">Rol</label>
+          <select class="form-select" id="nuRol">
+            <option value="operador">Operador</option>
+            <option value="admin_empresa">Admin de empresa</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('formCrearUsuario').style.display='none'">Cancelar</button>
+          <button class="btn btn-acento btn-sm" onclick="crearUsuarioEnEmpresa()">✓ Crear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Nuevo admin global -->
+  <div class="modal-overlay" id="modalNuevoAdmin">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-titulo">👤 Nuevo Admin Global</div>
+        <button class="modal-cerrar" onclick="cerrarModal('modalNuevoAdmin')">✕</button>
+      </div>
+      <div class="form-grupo">
+        <label class="form-label">Nombre</label>
+        <input type="text" class="form-input" id="agNombre" placeholder="Nombre completo">
+      </div>
+      <div class="form-grupo">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" id="agEmail" placeholder="admin@stockia.com" inputmode="email">
+      </div>
+      <div class="form-grupo">
+        <label class="form-label">Contraseña</label>
+        <input type="text" class="form-input" id="agPass" placeholder="Mínimo 8 caracteres">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="cerrarModal('modalNuevoAdmin')">Cancelar</button>
+        <button class="btn btn-acento" onclick="crearAdminGlobal()">✓ Crear</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/global.js?v=3.0"></script>
+  <script>
+    const COLORES = ['#1e3a8a','#7c3aed','#059669','#dc2626','#d97706','#0891b2','#be185d','#374151'];
+    let modulosDisponibles = [
+      { key: 'articulos',   label: 'Artículos',   icono: '📦', desc: 'Catálogo de productos/artículos' },
+      { key: 'clientes',    label: 'Clientes',    icono: '👥', desc: 'Gestión de clientes' },
+      { key: 'ventas',      label: 'Ventas',      icono: '💰', desc: 'Registro de ventas' },
+      { key: 'proveedores', label: 'Proveedores', icono: '🏭', desc: 'Gestión de proveedores' },
+    ];
+
+    // ── Init ──────────────────────────────────────────────────
+    (async () => {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) { window.location.href = 'login.html'; return; }
+      const { data: ag } = await sb.from('global_admins').select('*').eq('id', session.user.id).single();
+      if (!ag) { window.location.href = 'login.html'; return; }
+      document.getElementById('navNombre').textContent = ag.nombre;
+      document.getElementById('menuUsuarioInfo').textContent = ag.nombre + ' · Super Admin';
+      renderColorPicker('colorPicker', 'empColor', '#1e3a8a');
+      cargarEmpresas();
+      cargarAdmins();
+
+      // Auto-slug
+      document.getElementById('empNombre').addEventListener('input', (e) => {
+        document.getElementById('empSlug').value = e.target.value
+          .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+          .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+      });
+    })();
+
+    // ── Tabs ─────────────────────────────────────────────────
+    function cambiarTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach((b,i) => {
+        const tabs = ['empresas','admins'];
+        b.classList.toggle('activo', tabs[i] === tab);
+      });
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('activo'));
+      document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('activo');
+    }
+
+    // ── Colores ───────────────────────────────────────────────
+    function renderColorPicker(containerId, inputId, valorActual) {
+      const c = document.getElementById(containerId);
+      c.innerHTML = COLORES.map(color => `
+        <span class="color-dot color-opt ${color === valorActual ? 'sel' : ''}"
+          style="background:${color}"
+          onclick="selColor('${containerId}','${inputId}','${color}')">
+        </span>
+      `).join('');
+      document.getElementById(inputId).value = valorActual;
+    }
+
+    function selColor(containerId, inputId, color) {
+      document.getElementById(containerId).querySelectorAll('.color-opt').forEach(el => {
+        el.classList.toggle('sel', el.style.background === color || el.style.backgroundColor === color);
+      });
+      document.getElementById(inputId).value = color;
+    }
+
+    // ── Empresas ──────────────────────────────────────────────
+    async function cargarEmpresas() {
+      const { data: empresas } = await sb.from('empresas').select('*').order('created_at', { ascending: false });
+      const lista = document.getElementById('listaEmpresas');
+
+      if (!empresas?.length) {
+        lista.innerHTML = `<div class="estado-vacio"><div class="estado-vacio-icono">🏢</div><div class="estado-vacio-titulo">Sin empresas</div><div class="estado-vacio-desc">Creá la primera empresa para comenzar.</div></div>`;
+        return;
+      }
+
+      lista.innerHTML = empresas.map(emp => `
+        <div class="empresa-card">
+          <div class="empresa-card-acento" style="background:${emp.color || '#1e3a8a'}"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+            <div>
+              <div class="empresa-card-nombre">${emp.nombre}</div>
+              <div class="empresa-card-slug">/${emp.slug}</div>
+            </div>
+            <span class="badge ${emp.activa ? 'badge-verde' : 'badge-gris'}">${emp.activa ? 'Activa' : 'Inactiva'}</span>
+          </div>
+          <div class="empresa-card-modulos">
+            ${Object.entries(emp.modulos_habilitados || {}).filter(([,v])=>v).map(([k]) =>
+              `<span class="badge badge-azul">${modulosDisponibles.find(m=>m.key===k)?.icono||''} ${k}</span>`
+            ).join('')}
+          </div>
+          <div class="empresa-card-footer">
+            <div class="empresa-card-acciones">
+              <button class="btn btn-sm btn-primario" onclick="ingresarComoEmpresa('${emp.id}')">🔑 Ingresar</button>
+              <button class="btn btn-sm btn-ghost" onclick="abrirEditarEmpresa('${emp.id}')">✏️ Editar</button>
+              <button class="btn btn-sm btn-ghost" onclick="abrirUsuariosEmpresa('${emp.id}','${emp.nombre}')">👥 Usuarios</button>
+              <button class="btn btn-sm btn-naranja" onclick="exportarEmpresaJSON('${emp.id}','${emp.nombre}')">⬇️ Backup</button>
+            </div>
+            <button class="btn btn-sm btn-peligro" onclick="toggleEmpresaActiva('${emp.id}', ${emp.activa})">
+              ${emp.activa ? '🔒 Desactivar' : '✓ Activar'}
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function crearEmpresa() {
+      const nombre = document.getElementById('empNombre').value.trim();
+      const slug   = document.getElementById('empSlug').value.trim();
+      const color  = document.getElementById('empColor').value;
+      const mNombre = document.getElementById('empModuloNombre').value.trim() || 'Artículos';
+      const mIcono  = document.getElementById('empModuloIcono').value.trim()  || '📦';
+      if (!nombre || !slug) { mostrarAlerta('Nombre y slug son obligatorios', 'error'); return; }
+
+      const { error } = await sb.from('empresas').insert({
+        nombre, slug, color,
+        modulo_articulos_nombre: mNombre,
+        modulo_articulos_icono:  mIcono,
+        modulos_habilitados: { articulos: true, clientes: true, ventas: true, proveedores: false }
+      });
+      if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
+      mostrarAlerta('Empresa creada ✓', 'exito');
+      cerrarModal('modalNuevaEmpresa');
+      document.getElementById('empNombre').value = '';
+      document.getElementById('empSlug').value   = '';
+      cargarEmpresas();
+    }
+
+    async function abrirEditarEmpresa(id) {
+      const { data: emp } = await sb.from('empresas').select('*').eq('id', id).single();
+      if (!emp) return;
+      document.getElementById('editEmpId').value     = id;
+      document.getElementById('editEmpNombre').value = emp.nombre;
+      document.getElementById('editEmpModuloNombre').value = emp.modulo_articulos_nombre || 'Artículos';
+      document.getElementById('editEmpModuloIcono').value  = emp.modulo_articulos_icono  || '📦';
+      document.getElementById('editPhNombre').value  = emp.modulo_articulos_placeholder_nombre || '';
+      document.getElementById('editPhDesc').value    = emp.modulo_articulos_placeholder_desc   || '';
+      document.getElementById('editPhCodigo').value  = emp.modulo_articulos_placeholder_codigo  || '';
+      renderColorPicker('colorPickerEdit', 'editEmpColor', emp.color || '#1e3a8a');
+
+      // Módulos
+      const modulos = emp.modulos_habilitados || {};
+      document.getElementById('editModulos').innerHTML = modulosDisponibles.map(m => `
+        <div class="modulo-toggle-card">
+          <div class="modulo-toggle-info">
+            <span class="modulo-toggle-icono">${m.icono}</span>
+            <div>
+              <div class="modulo-toggle-titulo">${m.label}</div>
+              <div class="modulo-toggle-desc">${m.desc}</div>
+            </div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="mod_${m.key}" ${modulos[m.key] ? 'checked' : ''}>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      `).join('');
+      abrirModal('modalEditarEmpresa');
+    }
+
+    async function guardarEmpresa() {
+      const id = document.getElementById('editEmpId').value;
+      const modulos = {};
+      modulosDisponibles.forEach(m => {
+        modulos[m.key] = document.getElementById('mod_' + m.key)?.checked || false;
+      });
+      const { error } = await sb.from('empresas').update({
+        nombre:   document.getElementById('editEmpNombre').value.trim(),
+        color:    document.getElementById('editEmpColor').value,
+        modulo_articulos_nombre: document.getElementById('editEmpModuloNombre').value.trim() || 'Artículos',
+        modulo_articulos_icono:  document.getElementById('editEmpModuloIcono').value.trim()  || '📦',
+        modulo_articulos_placeholder_nombre: document.getElementById('editPhNombre').value.trim(),
+        modulo_articulos_placeholder_desc:   document.getElementById('editPhDesc').value.trim(),
+        modulo_articulos_placeholder_codigo:  document.getElementById('editPhCodigo').value.trim(),
+        modulos_habilitados: modulos,
+      }).eq('id', id);
+      if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
+      mostrarAlerta('Empresa actualizada ✓', 'exito');
+      cerrarModal('modalEditarEmpresa');
+      cargarEmpresas();
+    }
+
+    async function toggleEmpresaActiva(id, activa) {
+      const { error } = await sb.from('empresas').update({ activa: !activa }).eq('id', id);
+      if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
+      mostrarAlerta(activa ? 'Empresa desactivada' : 'Empresa activada ✓', activa ? 'info' : 'exito');
+      cargarEmpresas();
+    }
+
+    function ingresarComoEmpresa(empresaId) {
+      // Redirige al dashboard con la empresa seleccionada en sessionStorage
+      sb.from('empresas').select('*').eq('id', empresaId).single().then(({ data: emp }) => {
+        if (!emp) return;
+        guardarEmpresaActiva(emp);
+        window.location.href = 'dashboard.html';
+      });
+    }
+
+    // ── Usuarios de empresa ───────────────────────────────────
+    async function abrirUsuariosEmpresa(empId, empNombre) {
+      document.getElementById('usuariosEmpId').value = empId;
+      document.getElementById('modalUsuariosTitulo').textContent = `👥 Usuarios · ${empNombre}`;
+      document.getElementById('formCrearUsuario').style.display = 'none';
+      abrirModal('modalUsuariosEmpresa');
+      cargarUsuariosEmpresa(empId);
+    }
+
+    async function cargarUsuariosEmpresa(empId) {
+      const { data: usuarios } = await sb
+        .from('profiles').select('*').eq('empresa_id', empId).order('created_at');
+      const lista = document.getElementById('listaUsuariosEmpresa');
+
+      if (!usuarios?.length) {
+        lista.innerHTML = `<p class="texto-suave" style="font-size:13px">Sin usuarios aún.</p>`;
+        return;
+      }
+      lista.innerHTML = `
+        <div class="tabla-contenedor">
+          <table class="tabla">
+            <thead><tr><th>Nombre</th><th>Rol</th><th>Estado</th><th>Acción</th></tr></thead>
+            <tbody>
+              ${usuarios.map(u => `
+                <tr>
+                  <td><b>${u.nombre}</b><br><small class="texto-suave">${u.email}</small></td>
+                  <td><span class="badge ${u.rol==='admin_empresa'?'badge-violeta':'badge-azul'}">${u.rol}</span></td>
+                  <td><span class="badge ${u.activo?'badge-verde':'badge-gris'}">${u.activo?'Activo':'Inactivo'}</span></td>
+                  <td>
+                    <button class="btn btn-sm btn-ghost" onclick="toggleUsuarioActivo('${u.id}',${u.activo},'${empId}')">
+                      ${u.activo?'🔒 Desactivar':'✓ Activar'}
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function abrirCrearUsuario() {
+      document.getElementById('formCrearUsuario').style.display = 'block';
+    }
+
+    async function crearUsuarioEnEmpresa() {
+      const empId  = document.getElementById('usuariosEmpId').value;
+      const nombre = document.getElementById('nuNombre').value.trim();
+      const email  = document.getElementById('nuEmail').value.trim();
+      const pass   = document.getElementById('nuPass').value;
+      const rol    = document.getElementById('nuRol').value;
+
+      if (!nombre || !email || !pass) { mostrarAlerta('Completá todos los campos', 'error'); return; }
+      if (pass.length < 8) { mostrarAlerta('La contraseña debe tener mínimo 8 caracteres', 'error'); return; }
+
+      // Crear usuario en Supabase Auth vía Admin API no disponible desde frontend.
+      // Usamos signUp que crea el usuario. El admin puede invitarlo así.
+      // Nota: Esto requiere que "Disable email confirmations" esté ON en Supabase Auth.
+      const { data, error } = await sb.auth.signUp({ email, password: pass });
+      if (error) { mostrarAlerta('Error Auth: ' + error.message, 'error'); return; }
+
+      const { error: e2 } = await sb.from('profiles').insert({
+        id: data.user.id, empresa_id: empId, nombre, email, rol
+      });
+      if (e2) { mostrarAlerta('Error perfil: ' + e2.message, 'error'); return; }
+
+      mostrarAlerta('Usuario creado ✓', 'exito');
+      document.getElementById('formCrearUsuario').style.display = 'none';
+      ['nuNombre','nuEmail','nuPass'].forEach(id => document.getElementById(id).value = '');
+      cargarUsuariosEmpresa(empId);
+    }
+
+    async function toggleUsuarioActivo(uid, activo, empId) {
+      await sb.from('profiles').update({ activo: !activo }).eq('id', uid);
+      cargarUsuariosEmpresa(empId);
+    }
+
+    // ── Admins Globales ───────────────────────────────────────
+    async function cargarAdmins() {
+      const { data: admins } = await sb.from('global_admins').select('*').order('created_at');
+      const tbody = document.getElementById('listaAdmins');
+      if (!admins?.length) { tbody.innerHTML = '<tr><td colspan="4" class="texto-suave" style="padding:16px">Sin admins globales</td></tr>'; return; }
+      tbody.innerHTML = admins.map(a => `
+        <tr>
+          <td><b>${a.nombre}</b></td>
+          <td>${a.email}</td>
+          <td><span class="badge ${a.activo?'badge-verde':'badge-gris'}">${a.activo?'Activo':'Inactivo'}</span></td>
+          <td>
+            <button class="btn btn-sm btn-ghost" onclick="toggleAdminActivo('${a.id}',${a.activo})">
+              ${a.activo?'🔒 Desactivar':'✓ Activar'}
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function crearAdminGlobal() {
+      const nombre = document.getElementById('agNombre').value.trim();
+      const email  = document.getElementById('agEmail').value.trim();
+      const pass   = document.getElementById('agPass').value;
+      if (!nombre || !email || !pass) { mostrarAlerta('Completá todos los campos', 'error'); return; }
+
+      const { data, error } = await sb.auth.signUp({ email, password: pass });
+      if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
+
+      await sb.from('global_admins').insert({ id: data.user.id, nombre, email });
+      mostrarAlerta('Admin global creado ✓', 'exito');
+      cerrarModal('modalNuevoAdmin');
+      ['agNombre','agEmail','agPass'].forEach(id => document.getElementById(id).value = '');
+      cargarAdmins();
+    }
+
+    async function toggleAdminActivo(id, activo) {
+      await sb.from('global_admins').update({ activo: !activo }).eq('id', id);
+      cargarAdmins();
+    }
+  </script>
+</body>
+</html>

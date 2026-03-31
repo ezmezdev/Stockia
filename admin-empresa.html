@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Stockia — Admin Empresa</title>
+  <!-- v3.0 -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/global.css?v=3.0">
+  <style>
+    .seccion { margin-bottom: 24px; }
+    .seccion-titulo {
+      font-size: 14px; font-weight: 700; color: var(--texto-suave);
+      text-transform: uppercase; letter-spacing: .6px;
+      margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+    }
+    .backup-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    .backup-card {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px; background: var(--bg); border-radius: var(--r-md);
+      border: 1px solid var(--borde); gap: 12px;
+    }
+    .backup-card-info { display: flex; align-items: center; gap: 10px; }
+    .backup-icono { font-size: 28px; }
+    .backup-titulo { font-size: 14px; font-weight: 600; }
+    .backup-desc   { font-size: 12px; color: var(--texto-suave); }
+    @media (min-width: 600px) { .backup-grid { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <header class="nav-header">
+      <a href="dashboard.html" class="nav-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 50" class="nav-logo-svg">
+          <text x="0" y="40" font-family="Poppins,sans-serif" font-weight="800" font-size="42" fill="white" letter-spacing="-1">St</text>
+          <g transform="translate(55,7)">
+            <rect x="0" y="12" width="26" height="18" rx="3" fill="white" opacity=".15"/>
+            <rect x="0" y="12" width="26" height="18" rx="3" fill="none" stroke="white" stroke-width="2.5"/>
+            <path d="M0 12 L5 5 L21 5 L26 12" fill="none" stroke="white" stroke-width="2.5" stroke-linejoin="round"/>
+            <line x1="5" y1="5" x2="7" y2="12" stroke="white" stroke-width="1.5" opacity=".6"/>
+            <line x1="21" y1="5" x2="19" y2="12" stroke="white" stroke-width="1.5" opacity=".6"/>
+            <line x1="13" y1="12" x2="13" y2="30" stroke="white" stroke-width="1.2" opacity=".4"/>
+          </g>
+          <text x="86" y="40" font-family="Poppins,sans-serif" font-weight="800" font-size="42" fill="white" letter-spacing="-1">ckia</text>
+        </svg>
+      </a>
+      <div class="nav-empresa-badge" id="navEmpresaBadge" style="display:none">
+        <span class="nav-empresa-dot"></span>
+        <span class="nav-empresa-nombre"></span>
+      </div>
+      <ul class="nav-links" id="navLinks"></ul>
+      <div class="nav-usuario">
+        <div class="nav-usuario-info">
+          <div class="nav-usuario-nombre" id="navNombre">-</div>
+          <div class="nav-usuario-rol" id="navRol">-</div>
+        </div>
+        <button class="btn-salir" onclick="cerrarSesion()">🚪 Salir</button>
+      </div>
+      <button class="nav-hamburguesa" id="navHamburguesa" onclick="toggleMenu()" aria-label="Menú">
+        <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+      </button>
+    </header>
+
+    <nav class="nav-menu-movil" id="navMenuMovil">
+      <div class="usuario-info" id="menuUsuarioInfo">Cargando...</div>
+      <div class="empresa-info" id="menuEmpresaInfo" style="display:none"></div>
+      <div class="separador"></div>
+      <div id="navMovilLinks"></div>
+      <div class="separador"></div>
+      <button onclick="cerrarSesion()"><span class="icono">🚪</span> Salir</button>
+    </nav>
+    <div class="nav-overlay" id="navOverlay" onclick="cerrarMenu()"></div>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-titulo">⚙️ Configuración</h1>
+          <p class="page-subtitulo" id="subtituloEmpresa">-</p>
+        </div>
+      </div>
+
+      <!-- Módulos habilitados -->
+      <div class="card seccion">
+        <div class="seccion-titulo">🔌 Módulos activos</div>
+        <p class="texto-suave" style="font-size:13px;margin-bottom:14px">
+          Activá o desactivá módulos. Los cambios se aplican de inmediato para todos los usuarios.
+        </p>
+        <div class="modulos-grid" id="modulosGrid">
+          <div class="cargando"><div class="spinner"></div></div>
+        </div>
+        <div style="margin-top:14px">
+          <button class="btn btn-acento" onclick="guardarModulos()">✓ Guardar módulos</button>
+        </div>
+      </div>
+
+      <!-- Usuarios de la empresa -->
+      <div class="card seccion">
+        <div class="seccion-titulo">👥 Usuarios de la empresa</div>
+        <button class="btn btn-secundario btn-sm" onclick="abrirModal('modalNuevoUsuario')" style="margin-bottom:14px">
+          ➕ Agregar usuario
+        </button>
+        <div class="tabla-contenedor">
+          <table class="tabla">
+            <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody id="tablaUsuarios">
+              <tr><td colspan="5"><div class="cargando"><div class="spinner"></div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Backup -->
+      <div class="card seccion">
+        <div class="seccion-titulo">💾 Backup de datos</div>
+        <p class="texto-suave" style="font-size:13px;margin-bottom:14px">
+          Descargá o importá todos los datos de tu empresa.
+        </p>
+        <div class="backup-grid">
+          <div class="backup-card">
+            <div class="backup-card-info">
+              <div class="backup-icono">📦</div>
+              <div>
+                <div class="backup-titulo">Backup completo (JSON)</div>
+                <div class="backup-desc">Incluye artículos, clientes, ventas y proveedores</div>
+              </div>
+            </div>
+            <button class="btn btn-naranja btn-sm" onclick="hacerBackupJSON()">⬇️ Descargar</button>
+          </div>
+          <div class="backup-card">
+            <div class="backup-card-info">
+              <div class="backup-icono">📊</div>
+              <div>
+                <div class="backup-titulo">Exportar ventas (CSV)</div>
+                <div class="backup-desc">Compatible con Excel / Google Sheets</div>
+              </div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="hacerBackupCSV('ventas')">⬇️ Descargar</button>
+          </div>
+          <div class="backup-card">
+            <div class="backup-card-info">
+              <div class="backup-icono">📋</div>
+              <div>
+                <div class="backup-titulo">Exportar artículos (CSV)</div>
+                <div class="backup-desc">Lista de artículos con stock y precios</div>
+              </div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="hacerBackupCSV('articulos')">⬇️ Descargar</button>
+          </div>
+          <div class="backup-card">
+            <div class="backup-card-info">
+              <div class="backup-icono">📥</div>
+              <div>
+                <div class="backup-titulo">Importar backup (JSON)</div>
+                <div class="backup-desc">Restaurar datos desde un backup anterior</div>
+              </div>
+            </div>
+            <label class="btn btn-primario btn-sm" style="cursor:pointer">
+              ⬆️ Importar
+              <input type="file" accept=".json" id="fileImport" style="display:none" onchange="importarBackup()">
+            </label>
+          </div>
+        </div>
+      </div>
+
+    </main>
+    <footer class="app-footer">© <span class="anio-actual"></span> Stockia.</footer>
+  </div>
+
+  <!-- MODAL: Nuevo usuario -->
+  <div class="modal-overlay" id="modalNuevoUsuario">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-titulo">➕ Nuevo usuario</div>
+        <button class="modal-cerrar" onclick="cerrarModal('modalNuevoUsuario')">✕</button>
+      </div>
+      <div class="form-grupo">
+        <label class="form-label">Nombre completo</label>
+        <input type="text" class="form-input" id="nuNombre" placeholder="Juan Pérez">
+      </div>
+      <div class="form-grupo">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" id="nuEmail" placeholder="juan@empresa.com" inputmode="email">
+      </div>
+      <div class="form-grupo">
+        <label class="form-label">Contraseña inicial</label>
+        <input type="text" class="form-input" id="nuPass" placeholder="Mínimo 8 caracteres">
+      </div>
+      <div class="form-grupo">
+        <label class="form-label">Rol</label>
+        <select class="form-select" id="nuRol">
+          <option value="operador">Operador</option>
+          <option value="admin_empresa">Admin de empresa</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="cerrarModal('modalNuevoUsuario')">Cancelar</button>
+        <button class="btn btn-acento" onclick="crearUsuario()">✓ Crear usuario</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/global.js?v=3.0"></script>
+  <script>
+    let empresaId = null;
+    let empresa   = null;
+    const modulosDisponibles = [
+      { key: 'articulos',   label: 'Artículos',   icono: '📦', desc: 'Catálogo de artículos' },
+      { key: 'clientes',    label: 'Clientes',    icono: '👥', desc: 'Gestión de clientes' },
+      { key: 'ventas',      label: 'Ventas',      icono: '💰', desc: 'Registro de ventas' },
+      { key: 'proveedores', label: 'Proveedores', icono: '🏭', desc: 'Gestión de proveedores' },
+    ];
+
+    (async () => {
+      const sesion = await verificarSesion();
+      if (!sesion) return;
+      if (sesion.esAdminGlobal && !sesion.empresa) { window.location.href = 'admin-global.html'; return; }
+
+      // Solo admin empresa o admin global
+      if (!sesion.esAdminGlobal && sesion.perfil.rol !== 'admin_empresa') {
+        mostrarAlerta('Sin permisos', 'error');
+        setTimeout(() => window.location.href = 'dashboard.html', 2000);
+        return;
+      }
+
+      empresa   = sesion.empresa;
+      empresaId = empresa?.id;
+      document.getElementById('subtituloEmpresa').textContent = empresa?.nombre || '-';
+      construirNav();
+
+      if (empresa) {
+        document.getElementById('menuEmpresaInfo').style.display = 'flex';
+        document.getElementById('menuEmpresaInfo').textContent   = empresa.nombre;
+      }
+
+      cargarModulos();
+      cargarUsuarios();
+    })();
+
+    function cargarModulos() {
+      const modulos = empresa?.modulos_habilitados || {};
+      const nombre  = empresa?.modulo_articulos_nombre || 'Artículos';
+      document.getElementById('modulosGrid').innerHTML = modulosDisponibles.map(m => `
+        <div class="modulo-toggle-card">
+          <div class="modulo-toggle-info">
+            <span class="modulo-toggle-icono">${m.key === 'articulos' ? (empresa?.modulo_articulos_icono||m.icono) : m.icono}</span>
+            <div>
+              <div class="modulo-toggle-titulo">${m.key === 'articulos' ? nombre : m.label}</div>
+              <div class="modulo-toggle-desc">${m.desc}</div>
+            </div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="mod_${m.key}" ${modulos[m.key] ? 'checked' : ''}
+              ${m.key === 'articulos' ? 'disabled' : ''}>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      `).join('');
+    }
+
+    async function guardarModulos() {
+      const modulos = {};
+      modulosDisponibles.forEach(m => {
+        modulos[m.key] = m.key === 'articulos' ? true : (document.getElementById('mod_' + m.key)?.checked || false);
+      });
+      const { error } = await sb.from('empresas').update({ modulos_habilitados: modulos }).eq('id', empresaId);
+      if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
+      mostrarAlerta('Módulos guardados ✓', 'exito');
+      // Refrescar
+      const { data: e } = await sb.from('empresas').select('*').eq('id', empresaId).single();
+      if (e) { empresa = e; guardarEmpresaActiva(e); }
+    }
+
+    async function cargarUsuarios() {
+      const { data } = await sb.from('profiles').select('*').eq('empresa_id', empresaId).order('nombre');
+      const tbody = document.getElementById('tablaUsuarios');
+      if (!data?.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="texto-suave" style="padding:16px">Sin usuarios</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.map(u => `
+        <tr>
+          <td><b>${u.nombre}</b></td>
+          <td style="font-size:12px">${u.email}</td>
+          <td><span class="badge ${u.rol==='admin_empresa'?'badge-violeta':'badge-azul'}">${u.rol}</span></td>
+          <td><span class="badge ${u.activo?'badge-verde':'badge-gris'}">${u.activo?'Activo':'Inactivo'}</span></td>
+          <td>
+            <button class="btn btn-sm btn-ghost" onclick="toggleUsuario('${u.id}',${u.activo})">
+              ${u.activo?'🔒 Desactivar':'✓ Activar'}
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function crearUsuario() {
+      const nombre = document.getElementById('nuNombre').value.trim();
+      const email  = document.getElementById('nuEmail').value.trim();
+      const pass   = document.getElementById('nuPass').value;
+      const rol    = document.getElementById('nuRol').value;
+      if (!nombre || !email || !pass) { mostrarAlerta('Completá todos los campos', 'error'); return; }
+      if (pass.length < 8) { mostrarAlerta('Contraseña mínimo 8 caracteres', 'error'); return; }
+
+      const { data, error } = await sb.auth.signUp({ email, password: pass });
+      if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
+      await sb.from('profiles').insert({ id: data.user.id, empresa_id: empresaId, nombre, email, rol });
+      mostrarAlerta('Usuario creado ✓', 'exito');
+      cerrarModal('modalNuevoUsuario');
+      ['nuNombre','nuEmail','nuPass'].forEach(id => document.getElementById(id).value = '');
+      cargarUsuarios();
+    }
+
+    async function toggleUsuario(uid, activo) {
+      await sb.from('profiles').update({ activo: !activo }).eq('id', uid);
+      cargarUsuarios();
+    }
+
+    function hacerBackupJSON() {
+      exportarEmpresaJSON(empresaId, empresa?.nombre || 'empresa');
+    }
+    function hacerBackupCSV(tabla) {
+      exportarEmpresaCSV(empresaId, empresa?.nombre || 'empresa', tabla);
+    }
+    async function importarBackup() {
+      const file = document.getElementById('fileImport').files[0];
+      if (!file) return;
+      if (!confirm('⚠️ Esto va a importar los datos del archivo. Los IDs existentes se actualizarán. ¿Continuar?')) return;
+      await importarBackupJSON(file, empresaId);
+      document.getElementById('fileImport').value = '';
+    }
+  </script>
+</body>
+</html>

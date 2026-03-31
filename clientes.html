@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Stockia — Clientes</title>
+  <!-- v3.0 -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/global.css?v=3.0">
+</head>
+<body>
+<div class="app-layout">
+  <header class="nav-header">
+    <a href="dashboard.html" class="nav-logo">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 50" class="nav-logo-svg">
+        <text x="0" y="40" font-family="Poppins,sans-serif" font-weight="800" font-size="42" fill="white" letter-spacing="-1">St</text>
+        <g transform="translate(55,7)">
+          <rect x="0" y="12" width="26" height="18" rx="3" fill="white" opacity=".15"/>
+          <rect x="0" y="12" width="26" height="18" rx="3" fill="none" stroke="white" stroke-width="2.5"/>
+          <path d="M0 12 L5 5 L21 5 L26 12" fill="none" stroke="white" stroke-width="2.5" stroke-linejoin="round"/>
+          <line x1="5" y1="5" x2="7" y2="12" stroke="white" stroke-width="1.5" opacity=".6"/>
+          <line x1="21" y1="5" x2="19" y2="12" stroke="white" stroke-width="1.5" opacity=".6"/>
+          <line x1="13" y1="12" x2="13" y2="30" stroke="white" stroke-width="1.2" opacity=".4"/>
+        </g>
+        <text x="86" y="40" font-family="Poppins,sans-serif" font-weight="800" font-size="42" fill="white" letter-spacing="-1">ckia</text>
+      </svg>
+    </a>
+    <div class="nav-empresa-badge" id="navEmpresaBadge" style="display:none">
+      <span class="nav-empresa-dot"></span><span class="nav-empresa-nombre"></span>
+    </div>
+    <ul class="nav-links" id="navLinks"></ul>
+    <div class="nav-usuario">
+      <div class="nav-usuario-info">
+        <div class="nav-usuario-nombre" id="navNombre">-</div>
+        <div class="nav-usuario-rol" id="navRol">-</div>
+      </div>
+      <button class="btn-salir" onclick="cerrarSesion()">🚪 Salir</button>
+    </div>
+    <button class="nav-hamburguesa" id="navHamburguesa" onclick="toggleMenu()" aria-label="Menú">
+      <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+    </button>
+  </header>
+
+  <nav class="nav-menu-movil" id="navMenuMovil">
+    <div class="usuario-info" id="menuUsuarioInfo">Cargando...</div>
+    <div class="empresa-info" id="menuEmpresaInfo" style="display:none"></div>
+    <div class="separador"></div>
+    <div id="navMovilLinks"></div>
+    <div class="separador"></div>
+    <button onclick="cerrarSesion()"><span class="icono">🚪</span> Salir</button>
+  </nav>
+  <div class="nav-overlay" id="navOverlay" onclick="cerrarMenu()"></div>
+
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-titulo">👥 Clientes</h1>
+        <p class="page-subtitulo">Gestioná tu cartera de clientes</p>
+      </div>
+      <button class="btn btn-acento btn-lg" onclick="abrirNuevoCliente()">➕ Nuevo Cliente</button>
+    </div>
+
+    <div class="card mb-24">
+      <div class="buscador-contenedor" style="margin-bottom:0">
+        <span class="buscador-icono">🔍</span>
+        <input type="text" class="buscador-input" id="buscarCliente" placeholder="Buscar por nombre, DNI o teléfono...">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead>
+            <tr><th>Nombre</th><th>DNI</th><th>Teléfono</th><th>Dirección</th><th>Deuda activa</th><th>Registrado</th><th>Acciones</th></tr>
+          </thead>
+          <tbody id="tablaClientes">
+            <tr><td colspan="7"><div class="cargando"><div class="spinner"></div><span>Cargando clientes...</span></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <footer class="app-footer">© <span class="anio-actual"></span> Stockia. Todos los derechos reservados.</footer>
+</div>
+
+<!-- MODAL: Nuevo / Editar Cliente -->
+<div class="modal-overlay" id="modalCliente">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-titulo" id="modalClienteTitulo">👥 Nuevo Cliente</h2>
+      <button class="modal-cerrar" onclick="cerrarModal('modalCliente')">✕</button>
+    </div>
+    <div class="form-grupo">
+      <label class="form-label">Nombre completo *</label>
+      <input type="text" id="cliNombre" class="form-input" placeholder="Ej: María González">
+    </div>
+    <div class="form-grupo">
+      <label class="form-label">DNI</label>
+      <input type="text" id="cliDni" class="form-input" placeholder="Ej: 30123456" inputmode="numeric">
+    </div>
+    <div class="form-fila">
+      <div class="form-grupo">
+        <label class="form-label">Teléfono</label>
+        <input type="tel" id="cliTelefono" class="form-input" placeholder="Ej: 1145678901">
+      </div>
+      <div class="form-grupo">
+        <label class="form-label">Email</label>
+        <input type="email" id="cliEmail" class="form-input" placeholder="cliente@email.com" inputmode="email">
+      </div>
+    </div>
+    <div class="form-grupo">
+      <label class="form-label">Dirección</label>
+      <input type="text" id="cliDireccion" class="form-input" placeholder="Ej: Av. San Martín 1234">
+    </div>
+    <div class="form-grupo">
+      <label class="form-label">Notas</label>
+      <textarea id="cliNotas" class="form-textarea" placeholder="Información adicional..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalCliente')">Cancelar</button>
+      <button class="btn btn-primario" id="btnGuardarCliente" onclick="guardarCliente()">💾 Guardar Cliente</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Detalle cliente -->
+<div class="modal-overlay" id="modalDetalleCliente">
+  <div class="modal" style="max-width:750px">
+    <div class="modal-header">
+      <h2 class="modal-titulo" id="detalleClienteTitulo">👤 Detalle del Cliente</h2>
+      <button class="modal-cerrar" onclick="cerrarModal('modalDetalleCliente')">✕</button>
+    </div>
+    <div id="detalleClienteContenido"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/global.js?v=3.0"></script>
+<script>
+  let empresaId     = null;
+  let empresa       = null;
+  let clienteActual = null;
+  let modoEdicion   = false;
+  let todosClientes = [];
+  let esAdmin       = false;
+
+  (async () => {
+    const sesion = await verificarSesion();
+    if (!sesion) return;
+    if (sesion.esAdminGlobal && !sesion.empresa) { window.location.href = 'admin-global.html'; return; }
+    empresa   = sesion.empresa;
+    empresaId = empresa?.id;
+    esAdmin   = sesion.esAdminGlobal || sesion.perfil.rol === 'admin_empresa';
+
+    if (empresa?.modulos_habilitados?.clientes === false) {
+      document.querySelector('.main-content').innerHTML = `<div class="estado-vacio" style="padding-top:80px"><div class="estado-vacio-icono">🔒</div><div class="estado-vacio-titulo">Módulo deshabilitado</div><a href="dashboard.html" class="btn btn-ghost mt-16">← Volver</a></div>`;
+      return;
+    }
+    construirNav();
+    if (empresa?.nombre) { document.getElementById('menuEmpresaInfo').style.display='flex'; document.getElementById('menuEmpresaInfo').textContent=empresa.nombre; }
+    await cargarClientes();
+    let timer;
+    document.getElementById('buscarCliente').addEventListener('input', e => { clearTimeout(timer); timer = setTimeout(() => cargarClientes(e.target.value.trim()), 350); });
+  })();
+
+  async function cargarClientes(query = '') {
+    const tbody = document.getElementById('tablaClientes');
+    tbody.innerHTML = '<tr><td colspan="7"><div class="cargando"><div class="spinner"></div></div></td></tr>';
+    let q = sb.from('clientes').select('*').eq('empresa_id', empresaId).eq('activo', true).order('nombre');
+    if (query) q = q.or(`nombre.ilike.%${query}%,dni.ilike.%${query}%,telefono.ilike.%${query}%`);
+    const { data, error } = await q;
+    if (error) { tbody.innerHTML = `<tr><td colspan="7"><div class="estado-vacio"><div class="estado-vacio-icono">⚠️</div><div class="estado-vacio-titulo">Error al cargar</div><div class="estado-vacio-desc" style="color:var(--rojo)">${error.message}</div></div></td></tr>`; return; }
+    if (!data?.length) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="estado-vacio"><div class="estado-vacio-icono">👥</div><div class="estado-vacio-titulo">${query ? 'Sin resultados' : 'Sin clientes registrados'}</div><div class="estado-vacio-desc">${query ? 'Probá con otro nombre o DNI.' : 'Agregá tu primer cliente.'}</div>${!query ? '<button class="btn btn-acento" onclick="abrirNuevoCliente()">➕ Nuevo Cliente</button>' : ''}</div></td></tr>`;
+      return;
+    }
+    todosClientes = data;
+    const { data: ventas } = await sb.from('ventas').select('cliente_id,saldo').eq('empresa_id', empresaId).gt('saldo', 0);
+    const deudaMap = {};
+    ventas?.forEach(v => { if (v.cliente_id) deudaMap[v.cliente_id] = (deudaMap[v.cliente_id]||0) + Number(v.saldo||0); });
+    tbody.innerHTML = data.map(c => {
+      const deuda = deudaMap[c.id] || 0;
+      return `<tr>
+        <td><div class="fw-600">${c.nombre}</div>${c.email?`<div style="font-size:11px;color:var(--texto-suave)">${c.email}</div>`:''}</td>
+        <td>${c.dni||'<span class="texto-suave">-</span>'}</td>
+        <td>${c.telefono?`<a href="tel:${c.telefono}" style="color:var(--azul-accion)">${c.telefono}</a>`:'<span class="texto-suave">-</span>'}</td>
+        <td class="texto-suave">${c.direccion||'-'}</td>
+        <td class="${deuda>0?'texto-rojo fw-600':'texto-suave'}">${deuda>0?formatoPeso(deuda):'—'}</td>
+        <td class="texto-suave">${formatoFecha(c.created_at)}</td>
+        <td><div class="tabla-acciones">
+          <button class="btn btn-ghost btn-sm" onclick="verDetalleCliente('${c.id}')">👁️</button>
+          <button class="btn btn-ghost btn-sm" onclick="editarCliente('${c.id}')">✏️</button>
+          ${esAdmin?`<button class="btn btn-peligro btn-sm" onclick="eliminarCliente('${c.id}','${c.nombre.replace(/'/g,"\\'")}')">🗑️</button>`:''}
+        </div></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function abrirNuevoCliente() {
+    clienteActual=null; modoEdicion=false;
+    document.getElementById('modalClienteTitulo').textContent='👥 Nuevo Cliente';
+    ['cliNombre','cliDni','cliTelefono','cliEmail','cliDireccion','cliNotas'].forEach(id=>document.getElementById(id).value='');
+    abrirModal('modalCliente');
+  }
+
+  function editarCliente(id) {
+    clienteActual=todosClientes.find(c=>c.id===id); if(!clienteActual)return;
+    modoEdicion=true;
+    document.getElementById('modalClienteTitulo').textContent='✏️ Editar Cliente';
+    document.getElementById('cliNombre').value   =clienteActual.nombre    ||'';
+    document.getElementById('cliDni').value      =clienteActual.dni       ||'';
+    document.getElementById('cliTelefono').value =clienteActual.telefono  ||'';
+    document.getElementById('cliEmail').value    =clienteActual.email     ||'';
+    document.getElementById('cliDireccion').value=clienteActual.direccion ||'';
+    document.getElementById('cliNotas').value    =clienteActual.notas     ||'';
+    abrirModal('modalCliente');
+  }
+
+  async function guardarCliente() {
+    const nombre=document.getElementById('cliNombre').value.trim();
+    if(!nombre){mostrarAlerta('El nombre es obligatorio.','error');return;}
+    const datos={empresa_id:empresaId,nombre,
+      dni:      document.getElementById('cliDni').value.trim()||null,
+      telefono: document.getElementById('cliTelefono').value.trim()||null,
+      email:    document.getElementById('cliEmail').value.trim()||null,
+      direccion:document.getElementById('cliDireccion').value.trim()||null,
+      notas:    document.getElementById('cliNotas').value.trim()||null};
+    const btn=document.getElementById('btnGuardarCliente');
+    btn.disabled=true; btn.textContent='Guardando...';
+    try {
+      const {error}=modoEdicion&&clienteActual
+        ?await sb.from('clientes').update(datos).eq('id',clienteActual.id)
+        :await sb.from('clientes').insert(datos);
+      if(error)throw error;
+      mostrarAlerta(modoEdicion?'Cliente actualizado ✓':'Cliente creado ✓','exito');
+      cerrarModal('modalCliente');
+      await cargarClientes(document.getElementById('buscarCliente').value.trim());
+    }catch(err){mostrarAlerta('Error: '+err.message,'error');}
+    finally{btn.disabled=false;btn.textContent='💾 Guardar Cliente';}
+  }
+
+  async function eliminarCliente(id,nombre) {
+    if(!confirm(`¿Desactivar al cliente "${nombre}"?`))return;
+    const{error}=await sb.from('clientes').update({activo:false}).eq('id',id);
+    if(error){mostrarAlerta('Error: '+error.message,'error');return;}
+    mostrarAlerta('Cliente eliminado ✓','exito');
+    await cargarClientes(document.getElementById('buscarCliente').value.trim());
+  }
+
+  async function verDetalleCliente(id) {
+    const cliente=todosClientes.find(c=>c.id===id); if(!cliente)return;
+    document.getElementById('detalleClienteTitulo').textContent=`👤 ${cliente.nombre}`;
+    const contenido=document.getElementById('detalleClienteContenido');
+    contenido.innerHTML='<div class="cargando"><div class="spinner"></div></div>';
+    abrirModal('modalDetalleCliente');
+    const{data:ventas}=await sb.from('ventas').select('*').eq('empresa_id',empresaId).eq('cliente_id',id).order('created_at',{ascending:false});
+    const deudaTotal=ventas?.reduce((s,v)=>s+Number(v.saldo||0),0)||0;
+    contenido.innerHTML=`
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+        <div style="padding:12px;background:var(--bg);border-radius:var(--r-sm)"><div class="texto-suave" style="font-size:12px">DNI</div><div class="fw-600">${cliente.dni||'-'}</div></div>
+        <div style="padding:12px;background:var(--bg);border-radius:var(--r-sm)"><div class="texto-suave" style="font-size:12px">Teléfono</div><div class="fw-600">${cliente.telefono?`<a href="tel:${cliente.telefono}" style="color:var(--azul-accion)">${cliente.telefono}</a>`:'-'}</div></div>
+        <div style="padding:12px;background:var(--bg);border-radius:var(--r-sm)"><div class="texto-suave" style="font-size:12px">Email</div><div class="fw-600" style="font-size:13px">${cliente.email||'-'}</div></div>
+        <div style="padding:12px;background:var(--bg);border-radius:var(--r-sm)"><div class="texto-suave" style="font-size:12px">Dirección</div><div class="fw-600" style="font-size:13px">${cliente.direccion||'-'}</div></div>
+      </div>
+      <div style="background:${deudaTotal>0?'#FEF2F2':'#ECFDF5'};border:1px solid ${deudaTotal>0?'#FECACA':'#A7F3D0'};border-radius:var(--r-sm);padding:14px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-weight:600;color:${deudaTotal>0?'#DC2626':'#059669'}">${deudaTotal>0?'💳 Deuda pendiente':'✓ Sin deuda pendiente'}</span>
+        ${deudaTotal>0?`<span style="font-size:20px;font-weight:800;color:#DC2626">${formatoPeso(deudaTotal)}</span>`:''}
+      </div>
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:12px">📋 Historial de compras</h3>
+      ${!ventas?.length?`<p class="texto-suave texto-centro" style="padding:20px">Sin compras registradas.</p>`:`
+        <div class="tabla-contenedor">
+          <table class="tabla">
+            <thead><tr><th>Fecha</th><th>Artículo</th><th>Total</th><th>Saldo</th><th>Estado</th></tr></thead>
+            <tbody>${ventas.map(v=>`
+              <tr>
+                <td>${formatoFecha(v.created_at)}</td>
+                <td class="fw-600">${v.articulo_nombre||'-'}</td>
+                <td>${formatoPeso(v.total)}</td>
+                <td class="${Number(v.saldo)>0?'texto-rojo fw-600':'texto-suave'}">${formatoPeso(v.saldo)}</td>
+                <td><span class="badge ${v.estado==='pagado'?'badge-verde':v.estado==='parcial'?'badge-naranja':'badge-rojo'}">${v.estado}</span></td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`}
+      ${cliente.notas?`<div style="margin-top:14px;padding:12px;background:var(--bg);border-radius:var(--r-sm)"><div class="texto-suave" style="font-size:12px;margin-bottom:4px">Notas</div><div style="font-size:13px">${cliente.notas}</div></div>`:''}`;
+  }
+</script>
+</body>
+</html>

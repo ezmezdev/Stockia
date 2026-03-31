@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Stockia — Dashboard</title>
+  <!-- v3.0 -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/global.css?v=3.0">
+</head>
+<body>
+  <div class="app-layout">
+
+    <!-- NAV -->
+    <header class="nav-header">
+      <a href="dashboard.html" class="nav-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 50" class="nav-logo-svg">
+          <text x="0" y="40" font-family="Poppins,sans-serif" font-weight="800" font-size="42" fill="white" letter-spacing="-1">St</text>
+          <g transform="translate(55,7)">
+            <rect x="0" y="12" width="26" height="18" rx="3" fill="white" opacity=".15"/>
+            <rect x="0" y="12" width="26" height="18" rx="3" fill="none" stroke="white" stroke-width="2.5"/>
+            <path d="M0 12 L5 5 L21 5 L26 12" fill="none" stroke="white" stroke-width="2.5" stroke-linejoin="round"/>
+            <line x1="5" y1="5" x2="7" y2="12" stroke="white" stroke-width="1.5" opacity=".6"/>
+            <line x1="21" y1="5" x2="19" y2="12" stroke="white" stroke-width="1.5" opacity=".6"/>
+            <line x1="13" y1="12" x2="13" y2="30" stroke="white" stroke-width="1.2" opacity=".4"/>
+          </g>
+          <text x="86" y="40" font-family="Poppins,sans-serif" font-weight="800" font-size="42" fill="white" letter-spacing="-1">ckia</text>
+        </svg>
+      </a>
+      <!-- Badge empresa (desktop) -->
+      <div class="nav-empresa-badge" id="navEmpresaBadge" style="display:none">
+        <span class="nav-empresa-dot"></span>
+        <span class="nav-empresa-nombre"></span>
+      </div>
+      <ul class="nav-links" id="navLinks"></ul>
+      <div class="nav-usuario">
+        <div class="nav-usuario-info">
+          <div class="nav-usuario-nombre" id="navNombre">-</div>
+          <div class="nav-usuario-rol" id="navRol">-</div>
+        </div>
+        <button class="btn-salir" onclick="cerrarSesion()">🚪 Salir</button>
+      </div>
+      <button class="nav-hamburguesa" id="navHamburguesa" onclick="toggleMenu()" aria-label="Menú">
+        <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+      </button>
+    </header>
+
+    <nav class="nav-menu-movil" id="navMenuMovil">
+      <div class="usuario-info" id="menuUsuarioInfo">Cargando...</div>
+      <div class="empresa-info" id="menuEmpresaInfo" style="display:none"></div>
+      <div class="separador"></div>
+      <div id="navMovilLinks"></div>
+      <div class="separador"></div>
+      <button onclick="cerrarSesion()"><span class="icono">🚪</span> Salir</button>
+    </nav>
+    <div class="nav-overlay" id="navOverlay" onclick="cerrarMenu()"></div>
+
+    <!-- CONTENIDO -->
+    <main class="main-content">
+
+      <!-- Banner empresa -->
+      <div class="empresa-banner" id="empresaBanner" style="display:none">
+        <div class="empresa-banner-icono" id="empresaBannerIcono">🏢</div>
+        <div>
+          <div class="empresa-banner-nombre" id="empresaBannerNombre">-</div>
+          <div class="empresa-banner-desc" id="empresaBannerDesc">Panel principal</div>
+        </div>
+        <div style="margin-left:auto">
+          <a href="admin-global.html" class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)" id="btnVolverAdmin">← Volver al admin</a>
+        </div>
+      </div>
+
+      <div class="page-header">
+        <div>
+          <h1 class="page-titulo">🏠 Panel Principal</h1>
+          <p class="page-subtitulo" id="fechaHoy"></p>
+        </div>
+        <a href="ventas.html" class="btn btn-acento btn-lg" id="btnNuevaVenta">➕ Nueva Venta</a>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+          <div class="stat-icono azul" id="statArticulosIcono">📦</div>
+          <div class="stat-info">
+            <div class="stat-valor" id="totalArticulos">—</div>
+            <div class="stat-label" id="statArticulosLabel">Artículos registrados</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icono verde">🔢</div>
+          <div class="stat-info">
+            <div class="stat-valor" id="stockTotal">—</div>
+            <div class="stat-label">Unidades en stock</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icono naranja">💰</div>
+          <div class="stat-info">
+            <div class="stat-valor" id="ventasActivas">—</div>
+            <div class="stat-label">Ventas del mes</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icono rojo">💳</div>
+          <div class="stat-info">
+            <div class="stat-valor" id="deudaTotal">—</div>
+            <div class="stat-label">Deuda total a cobrar</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Buscadores rápidos -->
+      <div class="buscadores-grid" id="buscadoresGrid">
+        <div class="card" id="cardBuscarArticulo">
+          <div class="card-titulo"><span class="icono" id="buscarArticuloIcono">📦</span> <span id="buscarArticuloLabel">Buscar artículo</span></div>
+          <div class="buscador-contenedor" style="margin-bottom:0">
+            <span class="buscador-icono">🔍</span>
+            <input type="text" class="buscador-input" id="buscarArticulo" placeholder="Nombre del artículo...">
+          </div>
+          <div id="resultadosArticulo" style="margin-top:12px"></div>
+        </div>
+        <div class="card" id="cardBuscarCliente" style="display:none">
+          <div class="card-titulo"><span class="icono">👥</span> Buscar cliente</div>
+          <div class="buscador-contenedor" style="margin-bottom:0">
+            <span class="buscador-icono">🔍</span>
+            <input type="text" class="buscador-input" id="buscarCliente" placeholder="Nombre o DNI...">
+          </div>
+          <div id="resultadosCliente" style="margin-top:12px"></div>
+        </div>
+      </div>
+
+      <!-- Últimas ventas -->
+      <div class="card" id="cardUltimasVentas" style="display:none">
+        <div class="card-titulo"><span class="icono">📋</span> Últimas ventas</div>
+        <div class="tabla-contenedor">
+          <table class="tabla" id="tablaUltimasVentas">
+            <thead>
+              <tr>
+                <th>Fecha</th><th>Cliente</th><th>Artículo</th>
+                <th>Total</th><th>Deuda</th><th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="cuerpoUltimasVentas">
+              <tr><td colspan="6"><div class="cargando"><div class="spinner"></div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:16px;text-align:right">
+          <a href="ventas.html" class="btn btn-ghost btn-sm">Ver todas las ventas →</a>
+        </div>
+      </div>
+
+    </main>
+
+    <footer class="app-footer">© <span class="anio-actual"></span> Stockia. Todos los derechos reservados.</footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/global.js?v=3.0"></script>
+  <script>
+    let empresaId = null;
+    let empresa   = null;
+
+    // ── Menú hamburguesa ──────────────────────────────────────
+    document.querySelectorAll('#navMenuMovil a').forEach(a => a.addEventListener('click', cerrarMenu));
+
+    // ── Fecha ──────────────────────────────────────────────────
+    document.getElementById('fechaHoy').textContent =
+      new Date().toLocaleDateString('es-AR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+    // ── Init ───────────────────────────────────────────────────
+    (async () => {
+      const sesion = await verificarSesion();
+      if (!sesion) return;
+
+      // Si es admin global sin empresa seleccionada → redirigir al panel admin
+      if (sesion.esAdminGlobal && !sesion.empresa) {
+        window.location.href = 'admin-global.html';
+        return;
+      }
+
+      empresa   = sesion.empresa;
+      empresaId = empresa?.id;
+
+      // Banner empresa (visible para admins globales "actuando como empresa")
+      if (sesion.esAdminGlobal && empresa) {
+        const banner = document.getElementById('empresaBanner');
+        banner.style.display = 'flex';
+        document.getElementById('empresaBannerNombre').textContent = empresa.nombre;
+        document.getElementById('empresaBannerIcono').textContent  = empresa.modulo_articulos_icono || '🏢';
+        document.getElementById('empresaBannerDesc').textContent   = 'Estás navegando como esta empresa';
+        document.getElementById('menuEmpresaInfo').style.display = 'flex';
+        document.getElementById('menuEmpresaInfo').textContent   = empresa.nombre;
+      } else if (empresa) {
+        document.getElementById('menuEmpresaInfo').style.display = 'flex';
+        document.getElementById('menuEmpresaInfo').textContent   = empresa.nombre;
+      }
+
+      // Construir nav
+      construirNav();
+
+      // Adaptar textos de artículos
+      const nArt = empresa?.modulo_articulos_nombre || 'Artículos';
+      const iArt = empresa?.modulo_articulos_icono  || '📦';
+      document.getElementById('statArticulosIcono').textContent  = iArt;
+      document.getElementById('statArticulosLabel').textContent  = nArt + ' registrados';
+      document.getElementById('buscarArticuloIcono').textContent = iArt;
+      document.getElementById('buscarArticuloLabel').textContent = 'Buscar ' + nArt.toLowerCase();
+      document.getElementById('buscarArticulo').placeholder      = 'Nombre del ' + nArt.slice(0,-1).toLowerCase() + '...';
+
+      // Módulos
+      const mod = empresa?.modulos_habilitados || {};
+      if (mod.clientes) document.getElementById('cardBuscarCliente').style.display = '';
+      if (mod.ventas)   {
+        document.getElementById('cardUltimasVentas').style.display = '';
+        document.getElementById('btnNuevaVenta').style.display     = '';
+        cargarUltimasVentas();
+      } else {
+        document.getElementById('btnNuevaVenta').style.display = 'none';
+      }
+
+      cargarStats();
+      iniciarBuscadores();
+    })();
+
+    // ── Stats ─────────────────────────────────────────────────
+    async function cargarStats() {
+      if (!empresaId) return;
+      const [arts, ventas] = await Promise.all([
+        sb.from('articulos').select('stock').eq('empresa_id', empresaId).eq('activo', true),
+        sb.from('ventas').select('total,saldo').eq('empresa_id', empresaId),
+      ]);
+
+      const totalArts  = arts.data?.length || 0;
+      const stockSum   = arts.data?.reduce((s,a) => s + (a.stock||0), 0) || 0;
+
+      // Ventas del mes
+      const hoy = new Date();
+      const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString();
+      const ventasMes = ventas.data?.filter(v => v.created_at >= inicioMes) || [];
+      const totalVentasMes = ventasMes.reduce((s,v) => s + (v.total||0), 0);
+      const deudaTotal = ventas.data?.reduce((s,v) => s + (v.saldo||0), 0) || 0;
+
+      document.getElementById('totalArticulos').textContent = totalArts;
+      document.getElementById('stockTotal').textContent     = stockSum.toLocaleString('es-AR');
+      document.getElementById('ventasActivas').textContent  = formatoPeso(totalVentasMes);
+      document.getElementById('deudaTotal').textContent     = formatoPeso(deudaTotal);
+    }
+
+    // ── Últimas ventas ────────────────────────────────────────
+    async function cargarUltimasVentas() {
+      const { data: ventas } = await sb
+        .from('ventas')
+        .select('*, clientes(nombre)')
+        .eq('empresa_id', empresaId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      const tbody = document.getElementById('cuerpoUltimasVentas');
+      if (!ventas?.length) {
+        tbody.innerHTML = `<tr><td colspan="6"><div class="estado-vacio"><div class="estado-vacio-icono">💰</div><div class="estado-vacio-titulo">Sin ventas aún</div></div></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = ventas.map(v => `
+        <tr>
+          <td>${formatoFecha(v.created_at)}</td>
+          <td>${v.clientes?.nombre || 'Consumidor final'}</td>
+          <td>${v.articulo_nombre || '-'}</td>
+          <td>${formatoPeso(v.total)}</td>
+          <td class="${v.saldo > 0 ? 'texto-rojo' : 'texto-verde'}">${formatoPeso(v.saldo)}</td>
+          <td><span class="badge ${v.estado==='pagado'?'badge-verde':v.estado==='parcial'?'badge-naranja':'badge-rojo'}">${v.estado}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    // ── Buscadores ────────────────────────────────────────────
+    function iniciarBuscadores() {
+      let tA, tC;
+      document.getElementById('buscarArticulo').addEventListener('input', (e) => {
+        clearTimeout(tA);
+        tA = setTimeout(() => buscarArticulos(e.target.value), 300);
+      });
+      document.getElementById('buscarCliente')?.addEventListener('input', (e) => {
+        clearTimeout(tC);
+        tC = setTimeout(() => buscarClientes(e.target.value), 300);
+      });
+    }
+
+    async function buscarArticulos(q) {
+      const res = document.getElementById('resultadosArticulo');
+      if (!q || q.length < 2) { res.innerHTML = ''; return; }
+      const { data } = await sb.from('articulos').select('nombre,stock,precio')
+        .eq('empresa_id', empresaId).ilike('nombre', `%${q}%`).limit(5);
+      if (!data?.length) { res.innerHTML = '<p class="texto-suave" style="font-size:13px">Sin resultados</p>'; return; }
+      res.innerHTML = data.map(a => `
+        <div style="padding:8px 0;border-bottom:1px solid var(--borde);display:flex;justify-content:space-between;font-size:13px">
+          <span>${a.nombre}</span>
+          <span class="texto-suave">Stock: ${a.stock} · ${formatoPeso(a.precio)}</span>
+        </div>
+      `).join('');
+    }
+
+    async function buscarClientes(q) {
+      const res = document.getElementById('resultadosCliente');
+      if (!q || q.length < 2) { res.innerHTML = ''; return; }
+      const { data } = await sb.from('clientes').select('nombre,telefono,dni')
+        .eq('empresa_id', empresaId)
+        .or(`nombre.ilike.%${q}%,dni.ilike.%${q}%`).limit(5);
+      if (!data?.length) { res.innerHTML = '<p class="texto-suave" style="font-size:13px">Sin resultados</p>'; return; }
+      res.innerHTML = data.map(c => `
+        <div style="padding:8px 0;border-bottom:1px solid var(--borde);font-size:13px">
+          <b>${c.nombre}</b> <span class="texto-suave">${c.telefono||''} ${c.dni?'· DNI: '+c.dni:''}</span>
+        </div>
+      `).join('');
+    }
+  </script>
+</body>
+</html>

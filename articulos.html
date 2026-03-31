@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Stockia — Artículos</title>
+  <!-- v3.0 -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/global.css?v=3.0">
+</head>
+<body>
+  <div class="app-layout">
+    <header class="nav-header">
+      <a href="dashboard.html" class="nav-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 50" class="nav-logo-svg">
+          <text x="0" y="40" font-family="Poppins,sans-serif" font-weight="800" font-size="42" fill="white" letter-spacing="-1">St</text>
+          <g transform="translate(55,7)">
+            <rect x="0" y="12" width="26" height="18" rx="3" fill="white" opacity=".15"/>
+            <rect x="0" y="12" width="26" height="18" rx="3" fill="none" stroke="white" stroke-width="2.5"/>
+            <path d="M0 12 L5 5 L21 5 L26 12" fill="none" stroke="white" stroke-width="2.5" stroke-linejoin="round"/>
+            <line x1="5" y1="5" x2="7" y2="12" stroke="white" stroke-width="1.5" opacity=".6"/>
+            <line x1="21" y1="5" x2="19" y2="12" stroke="white" stroke-width="1.5" opacity=".6"/>
+            <line x1="13" y1="12" x2="13" y2="30" stroke="white" stroke-width="1.2" opacity=".4"/>
+          </g>
+          <text x="86" y="40" font-family="Poppins,sans-serif" font-weight="800" font-size="42" fill="white" letter-spacing="-1">ckia</text>
+        </svg>
+      </a>
+      <div class="nav-empresa-badge" id="navEmpresaBadge" style="display:none">
+        <span class="nav-empresa-dot"></span>
+        <span class="nav-empresa-nombre"></span>
+      </div>
+      <ul class="nav-links" id="navLinks"></ul>
+      <div class="nav-usuario">
+        <div class="nav-usuario-info">
+          <div class="nav-usuario-nombre" id="navNombre">-</div>
+          <div class="nav-usuario-rol" id="navRol">-</div>
+        </div>
+        <button class="btn-salir" onclick="cerrarSesion()">🚪 Salir</button>
+      </div>
+      <button class="nav-hamburguesa" id="navHamburguesa" onclick="toggleMenu()" aria-label="Menú">
+        <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+      </button>
+    </header>
+
+    <nav class="nav-menu-movil" id="navMenuMovil">
+      <div class="usuario-info" id="menuUsuarioInfo">Cargando...</div>
+      <div class="empresa-info" id="menuEmpresaInfo" style="display:none"></div>
+      <div class="separador"></div>
+      <div id="navMovilLinks"></div>
+      <div class="separador"></div>
+      <button onclick="cerrarSesion()"><span class="icono">🚪</span> Salir</button>
+    </nav>
+    <div class="nav-overlay" id="navOverlay" onclick="cerrarMenu()"></div>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-titulo" id="pageTitulo">📦 Artículos</h1>
+          <p class="page-subtitulo" id="pageSubtitulo">Gestioná tu catálogo</p>
+        </div>
+        <button class="btn btn-acento btn-lg" onclick="abrirModalNuevo()">
+          ➕ <span id="btnAgregarLabel">Agregar artículo</span>
+        </button>
+      </div>
+
+      <!-- Filtros -->
+      <div class="card mb-24">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <div class="buscador-contenedor" style="margin:0;flex:1;min-width:200px">
+            <span class="buscador-icono">🔍</span>
+            <input type="text" class="buscador-input" id="filtroNombre" placeholder="Buscar...">
+          </div>
+          <select class="form-select" id="filtroCategoria" style="width:auto;min-width:140px">
+            <option value="">Todas las categorías</option>
+          </select>
+          <select class="form-select" id="filtroStock" style="width:auto;min-width:140px">
+            <option value="">Todo el stock</option>
+            <option value="bajo">Stock bajo</option>
+            <option value="sin">Sin stock</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div class="card">
+        <div class="tabla-contenedor">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Categoría</th>
+                <th>Código</th>
+                <th>Precio</th>
+                <th>Stock</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="cuerpoTabla">
+              <tr><td colspan="7"><div class="cargando"><div class="spinner"></div><span>Cargando...</span></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="paginacion" style="display:flex;justify-content:center;gap:8px;margin-top:14px;flex-wrap:wrap"></div>
+      </div>
+    </main>
+
+    <footer class="app-footer">© <span class="anio-actual"></span> Stockia.</footer>
+  </div>
+
+  <!-- MODAL: Nuevo / Editar artículo -->
+  <div class="modal-overlay" id="modalArticulo">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-titulo" id="modalTitulo">➕ Nuevo artículo</div>
+        <button class="modal-cerrar" onclick="cerrarModal('modalArticulo')">✕</button>
+      </div>
+      <input type="hidden" id="artId">
+
+      <div class="form-fila">
+        <div class="form-grupo">
+          <label class="form-label" id="lblNombre">Nombre *</label>
+          <input type="text" class="form-input" id="artNombre" placeholder="Ej: Artículo">
+        </div>
+        <div class="form-grupo">
+          <label class="form-label">Código</label>
+          <input type="text" class="form-input" id="artCodigo" placeholder="Ej: ART-001">
+        </div>
+      </div>
+
+      <div class="form-grupo">
+        <label class="form-label" id="lblDesc">Descripción</label>
+        <textarea class="form-textarea" id="artDesc" placeholder="Descripción del artículo"></textarea>
+      </div>
+
+      <div class="form-fila">
+        <div class="form-grupo">
+          <label class="form-label">Categoría</label>
+          <input type="text" class="form-input" id="artCategoria" list="listaCategorias" placeholder="Ej: General">
+          <datalist id="listaCategorias"></datalist>
+        </div>
+        <div class="form-grupo">
+          <label class="form-label">Precio ($)</label>
+          <input type="number" class="form-input" id="artPrecio" placeholder="0.00" min="0" step="0.01">
+        </div>
+      </div>
+
+      <div class="form-fila">
+        <div class="form-grupo">
+          <label class="form-label">Stock actual</label>
+          <input type="number" class="form-input" id="artStock" placeholder="0" min="0">
+        </div>
+        <div class="form-grupo">
+          <label class="form-label">Stock mínimo (alerta)</label>
+          <input type="number" class="form-input" id="artStockMin" placeholder="0" min="0">
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="cerrarModal('modalArticulo')">Cancelar</button>
+        <button class="btn btn-acento" onclick="guardarArticulo()">✓ Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Confirmar eliminar -->
+  <div class="modal-overlay" id="modalEliminar">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-titulo">🗑️ Eliminar artículo</div>
+        <button class="modal-cerrar" onclick="cerrarModal('modalEliminar')">✕</button>
+      </div>
+      <input type="hidden" id="eliminarId">
+      <p style="font-size:14px;color:var(--texto-suave)">¿Estás seguro/a que querés eliminar este artículo? Esta acción no se puede deshacer.</p>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="cerrarModal('modalEliminar')">Cancelar</button>
+        <button class="btn btn-peligro" onclick="confirmarEliminar()">🗑️ Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/global.js?v=3.0"></script>
+  <script>
+    let empresaId  = null;
+    let empresa    = null;
+    let todosLosArticulos = [];
+    let phNombre = '', phDesc = '', phCodigo = '';
+
+    // ── Init ──────────────────────────────────────────────────
+    (async () => {
+      const sesion = await verificarSesion();
+      if (!sesion) return;
+      if (sesion.esAdminGlobal && !sesion.empresa) { window.location.href = 'admin-global.html'; return; }
+      empresa   = sesion.empresa;
+      empresaId = empresa?.id;
+      construirNav();
+
+      // Textos dinámicos
+      const nombre = empresa?.modulo_articulos_nombre || 'Artículos';
+      const icono  = empresa?.modulo_articulos_icono  || '📦';
+      phNombre     = empresa?.modulo_articulos_placeholder_nombre || 'Ej: Artículo';
+      phDesc       = empresa?.modulo_articulos_placeholder_desc   || 'Descripción del artículo';
+      phCodigo     = empresa?.modulo_articulos_placeholder_codigo  || 'Ej: ART-001';
+
+      document.title = `Stockia — ${nombre}`;
+      document.getElementById('pageTitulo').innerHTML  = `${icono} ${nombre}`;
+      document.getElementById('pageSubtitulo').textContent = `Gestioná tu catálogo de ${nombre.toLowerCase()}`;
+      document.getElementById('btnAgregarLabel').textContent = `Agregar ${nombre.slice(0,-1).toLowerCase() || 'artículo'}`;
+      document.getElementById('artNombre').placeholder  = phNombre;
+      document.getElementById('artDesc').placeholder    = phDesc;
+      document.getElementById('artCodigo').placeholder  = phCodigo;
+
+      if (empresa?.modulos_habilitados?.articulos === false) {
+        document.querySelector('.main-content').innerHTML = `<div class="estado-vacio"><div class="estado-vacio-icono">🔒</div><div class="estado-vacio-titulo">Módulo deshabilitado</div></div>`;
+        return;
+      }
+
+      if (empresa?.modulos_habilitados?.clientes !== false) {
+        document.getElementById('menuEmpresaInfo').style.display = 'flex';
+        if (empresa?.nombre) document.getElementById('menuEmpresaInfo').textContent = empresa.nombre;
+      }
+
+      cargarArticulos();
+      iniciarFiltros();
+    })();
+
+    // ── Cargar artículos ──────────────────────────────────────
+    async function cargarArticulos() {
+      const { data } = await sb.from('articulos').select('*')
+        .eq('empresa_id', empresaId).order('nombre');
+      todosLosArticulos = data || [];
+      llenarCategorias();
+      renderTabla(todosLosArticulos);
+    }
+
+    function llenarCategorias() {
+      const cats = [...new Set(todosLosArticulos.map(a => a.categoria).filter(Boolean))];
+      const sel  = document.getElementById('filtroCategoria');
+      sel.innerHTML = '<option value="">Todas las categorías</option>' +
+        cats.map(c => `<option value="${c}">${c}</option>`).join('');
+      const dl = document.getElementById('listaCategorias');
+      dl.innerHTML = cats.map(c => `<option value="${c}">`).join('');
+    }
+
+    function renderTabla(lista) {
+      const tbody = document.getElementById('cuerpoTabla');
+      if (!lista.length) {
+        tbody.innerHTML = `<tr><td colspan="7"><div class="estado-vacio">
+          <div class="estado-vacio-icono">${empresa?.modulo_articulos_icono||'📦'}</div>
+          <div class="estado-vacio-titulo">Sin artículos</div>
+          <div class="estado-vacio-desc">Agregá el primer artículo para comenzar</div>
+          <button class="btn btn-acento" onclick="abrirModalNuevo()">➕ Agregar</button>
+        </div></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = lista.map(a => `
+        <tr>
+          <td>
+            <b>${a.nombre}</b>
+            ${a.descripcion ? `<br><small class="texto-suave">${a.descripcion.substring(0,60)}${a.descripcion.length>60?'…':''}</small>` : ''}
+          </td>
+          <td>${a.categoria ? `<span class="badge badge-azul">${a.categoria}</span>` : '<span class="texto-suave">-</span>'}</td>
+          <td><code style="font-size:12px;color:var(--texto-suave)">${a.codigo||'-'}</code></td>
+          <td><b>${formatoPeso(a.precio)}</b></td>
+          <td>
+            <span class="badge ${a.stock === 0 ? 'badge-rojo' : a.stock <= (a.stock_minimo||0) ? 'badge-naranja' : 'badge-verde'}">
+              ${a.stock}
+            </span>
+            ${a.stock_minimo > 0 ? `<small class="texto-suave"> / mín ${a.stock_minimo}</small>` : ''}
+          </td>
+          <td><span class="badge ${a.activo ? 'badge-verde' : 'badge-gris'}">${a.activo ? 'Activo' : 'Inactivo'}</span></td>
+          <td>
+            <div class="tabla-acciones">
+              <button class="btn btn-sm btn-ghost" onclick="editarArticulo('${a.id}')">✏️</button>
+              <button class="btn btn-sm btn-ghost" onclick="abrirEliminar('${a.id}')">🗑️</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // ── Filtros ───────────────────────────────────────────────
+    function iniciarFiltros() {
+      ['filtroNombre','filtroCategoria','filtroStock'].forEach(id => {
+        document.getElementById(id).addEventListener('input', aplicarFiltros);
+        document.getElementById(id).addEventListener('change', aplicarFiltros);
+      });
+    }
+
+    function aplicarFiltros() {
+      const q    = document.getElementById('filtroNombre').value.toLowerCase();
+      const cat  = document.getElementById('filtroCategoria').value;
+      const stk  = document.getElementById('filtroStock').value;
+      let lista  = todosLosArticulos;
+      if (q)   lista = lista.filter(a => a.nombre.toLowerCase().includes(q) || (a.codigo||'').toLowerCase().includes(q));
+      if (cat) lista = lista.filter(a => a.categoria === cat);
+      if (stk === 'sin')  lista = lista.filter(a => a.stock === 0);
+      if (stk === 'bajo') lista = lista.filter(a => a.stock > 0 && a.stock <= (a.stock_minimo||5));
+      renderTabla(lista);
+    }
+
+    // ── Modal nuevo ───────────────────────────────────────────
+    function abrirModalNuevo() {
+      document.getElementById('artId').value       = '';
+      document.getElementById('artNombre').value   = '';
+      document.getElementById('artCodigo').value   = '';
+      document.getElementById('artDesc').value     = '';
+      document.getElementById('artCategoria').value= '';
+      document.getElementById('artPrecio').value   = '';
+      document.getElementById('artStock').value    = '';
+      document.getElementById('artStockMin').value = '';
+      document.getElementById('modalTitulo').textContent = `➕ Nuevo artículo`;
+      abrirModal('modalArticulo');
+    }
+
+    function editarArticulo(id) {
+      const a = todosLosArticulos.find(x => x.id === id);
+      if (!a) return;
+      document.getElementById('artId').value       = a.id;
+      document.getElementById('artNombre').value   = a.nombre;
+      document.getElementById('artCodigo').value   = a.codigo  || '';
+      document.getElementById('artDesc').value     = a.descripcion || '';
+      document.getElementById('artCategoria').value= a.categoria   || '';
+      document.getElementById('artPrecio').value   = a.precio  || '';
+      document.getElementById('artStock').value    = a.stock   || '';
+      document.getElementById('artStockMin').value = a.stock_minimo || '';
+      document.getElementById('modalTitulo').textContent = `✏️ Editar artículo`;
+      abrirModal('modalArticulo');
+    }
+
+    async function guardarArticulo() {
+      const id     = document.getElementById('artId').value;
+      const nombre = document.getElementById('artNombre').value.trim();
+      if (!nombre) { mostrarAlerta('El nombre es obligatorio', 'error'); return; }
+
+      const datos = {
+        empresa_id: empresaId,
+        nombre,
+        codigo:      document.getElementById('artCodigo').value.trim()   || null,
+        descripcion: document.getElementById('artDesc').value.trim()     || null,
+        categoria:   document.getElementById('artCategoria').value.trim()|| null,
+        precio:      parseFloat(document.getElementById('artPrecio').value)   || 0,
+        stock:       parseInt(document.getElementById('artStock').value)       || 0,
+        stock_minimo:parseInt(document.getElementById('artStockMin').value)    || 0,
+      };
+
+      const { error } = id
+        ? await sb.from('articulos').update(datos).eq('id', id)
+        : await sb.from('articulos').insert(datos);
+
+      if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
+      mostrarAlerta(id ? 'Artículo actualizado ✓' : 'Artículo agregado ✓', 'exito');
+      cerrarModal('modalArticulo');
+      cargarArticulos();
+    }
+
+    function abrirEliminar(id) {
+      document.getElementById('eliminarId').value = id;
+      abrirModal('modalEliminar');
+    }
+
+    async function confirmarEliminar() {
+      const id = document.getElementById('eliminarId').value;
+      const { error } = await sb.from('articulos').delete().eq('id', id);
+      if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
+      mostrarAlerta('Artículo eliminado', 'info');
+      cerrarModal('modalEliminar');
+      cargarArticulos();
+    }
+  </script>
+</body>
+</html>

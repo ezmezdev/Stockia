@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Stockia — Ingresar</title>
+  <!-- v3.0 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { font-family: 'Poppins', sans-serif; min-height: 100vh; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
+    body {
+      background: #1a2f6b;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 24px 16px 72px; position: relative;
+    }
+    body::before {
+      content: ''; position: fixed; top: -30%; right: -20%;
+      width: 60vw; height: 60vw;
+      background: radial-gradient(circle, rgba(59,130,246,.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    body::after {
+      content: ''; position: fixed; bottom: -20%; left: -10%;
+      width: 40vw; height: 40vw;
+      background: radial-gradient(circle, rgba(16,185,129,.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .logo-area { text-align: center; margin-bottom: 28px; position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 100%; }
+    .logo-tagline { color: rgba(255,255,255,.75); font-size: 14px; font-weight: 400; margin-top: 8px; }
+    .login-card {
+      background: #fff; border-radius: 20px; padding: 28px 24px 24px;
+      width: 100%; max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.30);
+      position: relative; z-index: 1;
+    }
+    .login-titulo  { font-size: 22px; font-weight: 700; color: #111827; margin-bottom: 4px; }
+    .login-subtitulo { font-size: 13px; color: #6b7280; margin-bottom: 24px; }
+    .alerta-login {
+      background: #fee2e2; border: 1px solid #fca5a5; border-radius: 10px;
+      padding: 12px 14px; font-size: 13px; color: #b91c1c;
+      margin-bottom: 16px; display: none; align-items: center; gap: 8px;
+    }
+    .alerta-login.visible { display: flex; }
+    .form-grupo { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+    .input-wrap { position: relative; }
+    .form-input {
+      width: 100%; padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 10px;
+      font-size: 16px; font-family: 'Poppins', sans-serif; color: #111827; background: #fff;
+      outline: none; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none;
+    }
+    .form-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
+    .form-input.error { border-color: #ef4444; }
+    .btn-ojo {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; font-size: 19px;
+      color: #9ca3af; padding: 4px; line-height: 1; transition: color .15s;
+    }
+    .btn-ojo:hover { color: #1a2f6b; }
+    .form-error { font-size: 12px; color: #ef4444; margin-top: 4px; display: none; }
+    .form-error.visible { display: block; }
+    .btn-ingresar {
+      width: 100%; padding: 14px; background: #3b82f6; color: #fff;
+      border: none; border-radius: 12px; font-size: 16px; font-weight: 700;
+      font-family: 'Poppins', sans-serif; cursor: pointer;
+      transition: background .18s, transform .1s;
+      display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px;
+    }
+    .btn-ingresar:hover:not(:disabled) { background: #2563eb; transform: translateY(-1px); }
+    .btn-ingresar:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+    .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .login-ayuda { text-align: center; margin-top: 18px; font-size: 12px; color: #9ca3af; }
+    .copyright { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; padding: 12px; font-size: 11px; color: rgba(255,255,255,.45); background: rgba(0,0,0,.15); font-family: 'Poppins', sans-serif; z-index: 10; }
+  </style>
+</head>
+<body>
+  <div class="logo-area">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 50" width="200" height="46">
+      <text x="0" y="40" font-family="Poppins,sans-serif" font-weight="800" font-size="42" fill="white" letter-spacing="-1">St</text>
+      <g transform="translate(55,7)">
+        <rect x="0" y="12" width="26" height="18" rx="3" fill="white" opacity=".15"/>
+        <rect x="0" y="12" width="26" height="18" rx="3" fill="none" stroke="white" stroke-width="2.5"/>
+        <path d="M0 12 L5 5 L21 5 L26 12" fill="none" stroke="white" stroke-width="2.5" stroke-linejoin="round"/>
+        <line x1="5" y1="5" x2="7" y2="12" stroke="white" stroke-width="1.5" opacity=".6"/>
+        <line x1="21" y1="5" x2="19" y2="12" stroke="white" stroke-width="1.5" opacity=".6"/>
+        <line x1="13" y1="12" x2="13" y2="30" stroke="white" stroke-width="1.2" opacity=".4"/>
+      </g>
+      <text x="86" y="40" font-family="Poppins,sans-serif" font-weight="800" font-size="42" fill="white" letter-spacing="-1">ckia</text>
+    </svg>
+    <p class="logo-tagline">Tu inventario, bajo control.</p>
+  </div>
+
+  <div class="login-card">
+    <h1 class="login-titulo">Bienvenido/a 👋</h1>
+    <p class="login-subtitulo">Ingresá tus datos para continuar</p>
+    <div class="alerta-login" id="alertaLogin">
+      <span>⚠️</span><span id="alertaLoginTexto"></span>
+    </div>
+    <form id="formLogin" novalidate>
+      <div class="form-grupo">
+        <label class="form-label" for="email">Correo electrónico</label>
+        <div class="input-wrap">
+          <input type="email" id="email" class="form-input" placeholder="tu@email.com" autocomplete="email" inputmode="email" required>
+        </div>
+        <div class="form-error" id="errorEmail">Ingresá un email válido.</div>
+      </div>
+      <div class="form-grupo">
+        <label class="form-label" for="password">Contraseña</label>
+        <div class="input-wrap">
+          <input type="password" id="password" class="form-input" placeholder="Tu contraseña" style="padding-right:44px" autocomplete="current-password" required>
+          <button type="button" class="btn-ojo" id="btnOjo" onclick="togglePass()" title="Mostrar contraseña">👁️</button>
+        </div>
+        <div class="form-error" id="errorPass">Ingresá tu contraseña.</div>
+      </div>
+      <button type="submit" class="btn-ingresar" id="btnIngresar">
+        <span id="btnIngresarTexto">Ingresar</span>
+      </button>
+    </form>
+    <p class="login-ayuda">¿Problemas para ingresar? Contactá al administrador.</p>
+  </div>
+
+  <div class="copyright">© <span id="anio"></span> Stockia. Todos los derechos reservados.</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL      = 'https://okovdfkkadhzjgteblus.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9rb3ZkZmtrYWRoempndGVibHVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5MjcxMjksImV4cCI6MjA5MDUwMzEyOX0.EmIq6n14sJ7lkID3XTwi4RnoEm5CYtYYULibzPbSeg0';
+    const { createClient } = supabase;
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    document.getElementById('anio').textContent = new Date().getFullYear();
+
+    // Redirigir si ya hay sesión
+    sb.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) return;
+      // Ver si es admin global
+      const { data: ag } = await sb.from('global_admins').select('id').eq('id', session.user.id).single();
+      if (ag) { window.location.href = 'admin-global.html'; return; }
+      // Perfil normal
+      const { data: p } = await sb.from('profiles').select('activo').eq('id', session.user.id).single();
+      if (p?.activo) window.location.href = 'dashboard.html';
+    });
+
+    function togglePass() {
+      const inp = document.getElementById('password');
+      const btn = document.getElementById('btnOjo');
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+      btn.textContent = inp.type === 'password' ? '👁️' : '🙈';
+    }
+
+    function setLoading(on) {
+      const btn = document.getElementById('btnIngresar');
+      btn.disabled = on;
+      document.getElementById('btnIngresarTexto').innerHTML = on
+        ? '<div class="spinner"></div>' : 'Ingresar';
+    }
+
+    function mostrarError(msg) {
+      document.getElementById('alertaLoginTexto').textContent = msg;
+      document.getElementById('alertaLogin').classList.add('visible');
+    }
+    function ocultarError() {
+      document.getElementById('alertaLogin').classList.remove('visible');
+    }
+
+    document.getElementById('formLogin').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      ocultarError();
+      const email    = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      let ok = true;
+
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        document.getElementById('errorEmail').classList.add('visible');
+        document.getElementById('email').classList.add('error');
+        ok = false;
+      } else {
+        document.getElementById('errorEmail').classList.remove('visible');
+        document.getElementById('email').classList.remove('error');
+      }
+      if (!password) {
+        document.getElementById('errorPass').classList.add('visible');
+        document.getElementById('password').classList.add('error');
+        ok = false;
+      } else {
+        document.getElementById('errorPass').classList.remove('visible');
+        document.getElementById('password').classList.remove('error');
+      }
+      if (!ok) return;
+
+      setLoading(true);
+      try {
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) { mostrarError('Email o contraseña incorrectos.'); setLoading(false); return; }
+
+        // ¿Es admin global?
+        const { data: adminGlobal } = await sb
+          .from('global_admins').select('id').eq('id', data.user.id).eq('activo', true).single();
+        if (adminGlobal) { window.location.href = 'admin-global.html'; return; }
+
+        // Usuario normal
+        const { data: perfil } = await sb
+          .from('profiles').select('activo').eq('id', data.user.id).single();
+        if (!perfil?.activo) {
+          await sb.auth.signOut();
+          mostrarError('Tu cuenta está desactivada. Contactá al administrador.');
+          setLoading(false); return;
+        }
+        window.location.href = 'dashboard.html';
+      } catch {
+        mostrarError('Error de conexión. Intentá nuevamente.');
+        setLoading(false);
+      }
+    });
+  </script>
+</body>
+</html>
