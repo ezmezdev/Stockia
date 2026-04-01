@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Stockia — Dashboard</title>
-  <!-- v3.0 -->
+  <!-- v4.0 -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/global.css?v=3.0">
+  <link rel="stylesheet" href="css/global.css?v=4.0">
 </head>
 <body>
   <div class="app-layout">
@@ -137,8 +137,13 @@
           <table class="tabla" id="tablaUltimasVentas">
             <thead>
               <tr>
-                <th>Fecha</th><th>Cliente</th><th>Artículo</th>
-                <th>Total</th><th>Deuda</th><th>Estado</th>
+                <th>Cód.</th>
+                <th>Fecha</th>
+                <th>Cliente</th>
+                <th>Artículo</th>
+                <th>Total</th>
+                <th>Deuda</th>
+                <th>Estado</th>
               </tr>
             </thead>
             <tbody id="cuerpoUltimasVentas">
@@ -157,7 +162,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/global.js?v=3.0"></script>
+  <script src="js/global.js?v=4.0"></script>
   <script>
     let empresaId = null;
     let empresa   = null;
@@ -259,14 +264,15 @@
 
       const tbody = document.getElementById('cuerpoUltimasVentas');
       if (!ventas?.length) {
-        tbody.innerHTML = `<tr><td colspan="6"><div class="estado-vacio"><div class="estado-vacio-icono">💰</div><div class="estado-vacio-titulo">Sin ventas aún</div></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7"><div class="estado-vacio"><div class="estado-vacio-icono">💰</div><div class="estado-vacio-titulo">Sin ventas aún</div></div></td></tr>`;
         return;
       }
       tbody.innerHTML = ventas.map(v => `
         <tr>
+          <td><span style="font-family:monospace;font-size:11px;background:var(--bg);border:1px solid var(--borde);padding:2px 6px;border-radius:5px;color:var(--texto-suave)">${v.codigo_venta||'—'}</span></td>
           <td>${formatoFecha(v.created_at)}</td>
-          <td>${v.clientes?.nombre || 'Consumidor final'}</td>
-          <td>${v.articulo_nombre || '-'}</td>
+          <td>${v.clientes?.nombre || 'Cons. final'}</td>
+          <td class="fw-600">${v.articulo_nombre || '-'}</td>
           <td>${formatoPeso(v.total)}</td>
           <td class="${v.saldo > 0 ? 'texto-rojo' : 'texto-verde'}">${formatoPeso(v.saldo)}</td>
           <td><span class="badge ${v.estado==='pagado'?'badge-verde':v.estado==='parcial'?'badge-naranja':'badge-rojo'}">${v.estado}</span></td>

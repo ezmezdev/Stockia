@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Stockia — Super Admin</title>
-  <!-- v3.0 -->
+  <!-- v4.0 -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/global.css?v=3.0">
+  <link rel="stylesheet" href="css/global.css?v=4.0">
   <style>
     .admin-header-bar {
       background: linear-gradient(135deg, #1a2f6b 0%, #7c3aed 100%);
@@ -154,6 +154,14 @@
         <label class="form-label">Ícono del módulo</label>
         <input type="text" class="form-input" id="empModuloIcono" placeholder="Ej: 👗 🏠 🥩 🔧" style="font-size:20px">
       </div>
+      <div class="form-grupo">
+        <label class="form-label">Tipo de negocio</label>
+        <select class="form-select" id="empTipoNegocio">
+          <option value="mayorista">🏪 Mayorista — requiere datos de cliente</option>
+          <option value="kiosco_almacen">🛒 Kiosco / Almacén — venta sin registrar cliente</option>
+        </select>
+        <small class="texto-suave" style="font-size:11px">Esto define si se requieren datos completos del cliente en cada venta.</small>
+      </div>
       <div class="modal-footer">
         <button class="btn btn-ghost" onclick="cerrarModal('modalNuevaEmpresa')">Cancelar</button>
         <button class="btn btn-acento" onclick="crearEmpresa()">✓ Crear empresa</button>
@@ -207,6 +215,13 @@
         </div>
       </div>
 
+      <div class="form-grupo">
+        <label class="form-label">Tipo de negocio</label>
+        <select class="form-select" id="editEmpTipoNegocio">
+          <option value="mayorista">🏪 Mayorista</option>
+          <option value="kiosco_almacen">🛒 Kiosco / Almacén</option>
+        </select>
+      </div>
       <div class="form-grupo">
         <label class="form-label">Módulos habilitados</label>
         <div class="modulos-grid" id="editModulos">
@@ -293,7 +308,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/global.js?v=3.0"></script>
+  <script src="js/global.js?v=4.0"></script>
   <script>
     const COLORES = ['#1e3a8a','#7c3aed','#059669','#dc2626','#d97706','#0891b2','#be185d','#374151'];
     let modulosDisponibles = [
@@ -398,10 +413,11 @@
       const color  = document.getElementById('empColor').value;
       const mNombre = document.getElementById('empModuloNombre').value.trim() || 'Artículos';
       const mIcono  = document.getElementById('empModuloIcono').value.trim()  || '📦';
+      const tipo    = document.getElementById('empTipoNegocio').value;
       if (!nombre || !slug) { mostrarAlerta('Nombre y slug son obligatorios', 'error'); return; }
 
       const { error } = await sb.from('empresas').insert({
-        nombre, slug, color,
+        nombre, slug, color, tipo_negocio: tipo,
         modulo_articulos_nombre: mNombre,
         modulo_articulos_icono:  mIcono,
         modulos_habilitados: { articulos: true, clientes: true, ventas: true, proveedores: false }
@@ -425,6 +441,8 @@
       document.getElementById('editPhDesc').value    = emp.modulo_articulos_placeholder_desc   || '';
       document.getElementById('editPhCodigo').value  = emp.modulo_articulos_placeholder_codigo  || '';
       renderColorPicker('colorPickerEdit', 'editEmpColor', emp.color || '#1e3a8a');
+
+      document.getElementById('editEmpTipoNegocio').value = emp.tipo_negocio || 'mayorista';
 
       // Módulos
       const modulos = emp.modulos_habilitados || {};
@@ -455,6 +473,7 @@
       const { error } = await sb.from('empresas').update({
         nombre:   document.getElementById('editEmpNombre').value.trim(),
         color:    document.getElementById('editEmpColor').value,
+        tipo_negocio: document.getElementById('editEmpTipoNegocio').value,
         modulo_articulos_nombre: document.getElementById('editEmpModuloNombre').value.trim() || 'Artículos',
         modulo_articulos_icono:  document.getElementById('editEmpModuloIcono').value.trim()  || '📦',
         modulo_articulos_placeholder_nombre: document.getElementById('editPhNombre').value.trim(),

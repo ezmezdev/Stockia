@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Stockia — Proveedores</title>
+  <!-- v4.0 -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/global.css?v=4.0">
+  <style>
+    .proveedor-card {
+      background: var(--bg-card); border-radius: var(--r-lg);
+      border: 2px solid var(--borde); padding: 16px;
+      transition: var(--transition); cursor: pointer;
+    }
+    .proveedor-card:hover { border-color: var(--azul-accion); box-shadow: var(--sombra-md); }
+    .proveedor-card-codigo { font-size: 11px; font-weight: 700; color: var(--texto-suave); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+    .proveedor-card-nombre { font-size: 16px; font-weight: 700; color: var(--texto); margin-bottom: 8px; }
+    .proveedor-card-datos  { display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; color: var(--texto-suave); }
+    .proveedor-card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--borde); }
+    .proveedores-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .codigo-input-wrap { position: relative; }
+    .codigo-sugerido { font-size: 11px; color: var(--azul-accion); margin-top: 3px; cursor: pointer; }
+    .codigo-sugerido:hover { text-decoration: underline; }
+    .error-codigo { font-size: 12px; color: var(--rojo); margin-top: 4px; display: none; }
+    .error-codigo.visible { display: block; }
+    /* Ficha proveedor */
+    .ficha-header { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 20px; }
+    .ficha-avatar { width: 52px; height: 52px; border-radius: var(--r-md); background: var(--azul-nav); display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+    .ficha-nombre { font-size: 20px; font-weight: 800; color: var(--texto); }
+    .ficha-codigo { font-size: 12px; color: var(--texto-suave); font-weight: 600; }
+    .ficha-datos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+    .ficha-dato { padding: 10px 12px; background: var(--bg); border-radius: var(--r-sm); }
+    .ficha-dato-label { font-size: 11px; color: var(--texto-suave); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2px; }
+    .ficha-dato-valor { font-size: 14px; font-weight: 600; color: var(--texto); }
+    .resumen-compras { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+    .resumen-compra-item { flex: 1; min-width: 120px; padding: 12px; background: var(--bg); border-radius: var(--r-md); text-align: center; }
+    .resumen-compra-valor { font-size: 18px; font-weight: 800; color: var(--azul-nav); }
+    .resumen-compra-label { font-size: 11px; color: var(--texto-suave); }
+    @media (min-width: 600px) { .proveedores-grid { grid-template-columns: 1fr 1fr; } }
+    @media (min-width: 900px) { .proveedores-grid { grid-template-columns: repeat(3, 1fr); } }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+
+  <!-- NAV (igual que resto de páginas) -->
+  <header class="nav-header">
+    <a href="dashboard.html" class="nav-logo">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 50" class="nav-logo-svg">
+        <text x="0" y="40" font-family="Poppins,sans-serif" font-weight="800" font-size="42" fill="white" letter-spacing="-1">St</text>
+        <g transform="translate(55,7)">
+          <rect x="0" y="12" width="26" height="18" rx="3" fill="white" opacity=".15"/>
+          <rect x="0" y="12" width="26" height="18" rx="3" fill="none" stroke="white" stroke-width="2.5"/>
+          <path d="M0 12 L5 5 L21 5 L26 12" fill="none" stroke="white" stroke-width="2.5" stroke-linejoin="round"/>
+          <line x1="5" y1="5" x2="7" y2="12" stroke="white" stroke-width="1.5" opacity=".6"/>
+          <line x1="21" y1="5" x2="19" y2="12" stroke="white" stroke-width="1.5" opacity=".6"/>
+          <line x1="13" y1="12" x2="13" y2="30" stroke="white" stroke-width="1.2" opacity=".4"/>
+        </g>
+        <text x="86" y="40" font-family="Poppins,sans-serif" font-weight="800" font-size="42" fill="white" letter-spacing="-1">ckia</text>
+      </svg>
+    </a>
+    <div class="nav-empresa-badge" id="navEmpresaBadge" style="display:none">
+      <span class="nav-empresa-dot"></span><span class="nav-empresa-nombre"></span>
+    </div>
+    <ul class="nav-links" id="navLinks"></ul>
+    <div class="nav-usuario">
+      <div class="nav-usuario-info">
+        <div class="nav-usuario-nombre" id="navNombre">-</div>
+        <div class="nav-usuario-rol"    id="navRol">-</div>
+      </div>
+      <button class="btn-salir" onclick="cerrarSesion()">🚪 Salir</button>
+    </div>
+    <button class="nav-hamburguesa" id="navHamburguesa" onclick="toggleMenu()" aria-label="Menú">
+      <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+    </button>
+  </header>
+  <nav class="nav-menu-movil" id="navMenuMovil">
+    <div class="usuario-info" id="menuUsuarioInfo">Cargando...</div>
+    <div class="empresa-info" id="menuEmpresaInfo" style="display:none"></div>
+    <div class="separador"></div>
+    <div id="navMovilLinks"></div>
+    <div class="separador"></div>
+    <button onclick="cerrarSesion()"><span class="icono">🚪</span> Salir</button>
+  </nav>
+  <div class="nav-overlay" id="navOverlay" onclick="cerrarMenu()"></div>
+
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-titulo">🏭 Proveedores</h1>
+        <p class="page-subtitulo">Gestioná tus proveedores y pedidos</p>
+      </div>
+      <button class="btn btn-acento btn-lg" onclick="abrirNuevo()">➕ Nuevo Proveedor</button>
+    </div>
+
+    <!-- Búsqueda -->
+    <div class="card mb-24">
+      <div class="buscador-contenedor" style="margin-bottom:0">
+        <span class="buscador-icono">🔍</span>
+        <input type="text" class="buscador-input" id="buscarProv"
+          placeholder="Buscar por código, nombre o teléfono...">
+      </div>
+    </div>
+
+    <!-- Cards grid -->
+    <div class="proveedores-grid" id="listaProveedores">
+      <div class="cargando"><div class="spinner"></div><span>Cargando proveedores...</span></div>
+    </div>
+  </main>
+
+  <footer class="app-footer">© <span class="anio-actual"></span> Stockia.</footer>
+</div>
+
+<!-- ═══ MODAL: Nuevo / Editar proveedor ═══ -->
+<div class="modal-overlay" id="modalProv">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-titulo" id="modalProvTitulo">🏭 Nuevo Proveedor</div>
+      <button class="modal-cerrar" onclick="cerrarModal('modalProv')">✕</button>
+    </div>
+    <input type="hidden" id="provId">
+
+    <!-- Código -->
+    <div class="form-grupo">
+      <label class="form-label">Código interno *</label>
+      <div class="codigo-input-wrap">
+        <input type="text" class="form-input" id="provCodigo" placeholder="Ej: PROV-001"
+          oninput="limpiarErrorCodigo('provErrCodigo')">
+        <div class="codigo-sugerido" id="provCodigoSugerido" onclick="usarSugerido('provCodigo','provCodigoSugerido')"></div>
+      </div>
+      <div class="error-codigo" id="provErrCodigo">⚠ Este código ya existe para otro proveedor.</div>
+    </div>
+
+    <div class="form-grupo">
+      <label class="form-label">Nombre del proveedor *</label>
+      <input type="text" class="form-input" id="provNombre" placeholder="Ej: Distribuidora del Sur">
+    </div>
+
+    <div class="form-fila">
+      <div class="form-grupo">
+        <label class="form-label">Teléfono</label>
+        <input type="tel" class="form-input" id="provTelefono" placeholder="Ej: 1145678901">
+      </div>
+      <div class="form-grupo">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" id="provEmail" placeholder="proveedor@email.com" inputmode="email">
+      </div>
+    </div>
+
+    <div class="form-grupo">
+      <label class="form-label">Dirección</label>
+      <input type="text" class="form-input" id="provDireccion" placeholder="Ej: Av. Industrial 456">
+    </div>
+
+    <div class="form-fila">
+      <div class="form-grupo">
+        <label class="form-label">CUIT</label>
+        <input type="text" class="form-input" id="provCuit" placeholder="Ej: 20-12345678-5">
+      </div>
+      <div class="form-grupo">
+        <label class="form-label">Contacto (persona)</label>
+        <input type="text" class="form-input" id="provContacto" placeholder="Nombre del contacto">
+      </div>
+    </div>
+
+    <div class="form-grupo">
+      <label class="form-label">Notas</label>
+      <textarea class="form-textarea" id="provNotas" placeholder="Condiciones, días de entrega, etc."></textarea>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalProv')">Cancelar</button>
+      <button class="btn btn-acento" id="btnGuardarProv" onclick="guardarProveedor()">✓ Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Ficha proveedor ═══ -->
+<div class="modal-overlay" id="modalFicha">
+  <div class="modal" style="max-width:700px;max-height:95vh">
+    <div class="modal-header">
+      <div class="modal-titulo" id="fichaTitulo">🏭 Ficha</div>
+      <button class="modal-cerrar" onclick="cerrarModal('modalFicha')">✕</button>
+    </div>
+    <div id="fichaContenido"><div class="cargando"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Nueva compra ═══ -->
+<div class="modal-overlay" id="modalCompra">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-header">
+      <div class="modal-titulo">🛒 Registrar Pedido/Compra</div>
+      <button class="modal-cerrar" onclick="cerrarModal('modalCompra')">✕</button>
+    </div>
+    <input type="hidden" id="compraProvId">
+    <input type="hidden" id="compraId">
+
+    <div class="form-grupo">
+      <label class="form-label" id="lblCompraArticulo">Artículo</label>
+      <select class="form-select" id="compraArticulo" onchange="actualizarPrecioCompra()">
+        <option value="">— Seleccioná un artículo (opcional) —</option>
+      </select>
+    </div>
+    <div class="form-grupo">
+      <label class="form-label">Descripción / Detalle *</label>
+      <input type="text" class="form-input" id="compraDesc" placeholder="Qué se compró (puede ser manual)">
+    </div>
+
+    <div class="form-fila">
+      <div class="form-grupo">
+        <label class="form-label">Cantidad</label>
+        <input type="number" class="form-input" id="compraCantidad" value="1" min="1" oninput="calcularCompra()">
+      </div>
+      <div class="form-grupo">
+        <label class="form-label">Precio unitario ($)</label>
+        <input type="number" class="form-input" id="compraPrecio" placeholder="0.00" min="0" step="0.01" oninput="calcularCompra()">
+      </div>
+    </div>
+
+    <div class="form-grupo">
+      <label class="form-label">Forma de pago</label>
+      <select class="form-select" id="compraFormaPago">
+        <option value="efectivo">💵 Efectivo</option>
+        <option value="transferencia">🏦 Transferencia</option>
+        <option value="tarjeta">💳 Tarjeta</option>
+        <option value="cuenta_corriente">📋 Cuenta corriente</option>
+        <option value="cheque">📜 Cheque</option>
+      </select>
+    </div>
+
+    <div class="form-grupo">
+      <label class="form-label">Pago inicial ($) <small class="texto-suave">(0 = queda pendiente)</small></label>
+      <input type="number" class="form-input" id="compraPagado" value="0" min="0" step="0.01" oninput="calcularCompra()">
+    </div>
+
+    <div class="form-grupo">
+      <label class="form-label">N° Remito proveedor</label>
+      <input type="text" class="form-input" id="compraRemito" placeholder="Ej: REM-0001">
+    </div>
+
+    <div class="form-grupo">
+      <label class="form-label">Notas</label>
+      <input type="text" class="form-input" id="compraNotas" placeholder="Observaciones">
+    </div>
+
+    <!-- Resumen -->
+    <div class="resumen-venta" id="resumenCompra">
+      <div class="resumen-row"><span>Total:</span><span class="resumen-total" id="cTotal">$0</span></div>
+      <div class="resumen-row"><span>Pago inicial:</span><span id="cPagado">$0</span></div>
+      <div class="resumen-row" style="color:var(--rojo)"><b>Saldo pendiente:</b><b id="cSaldo">$0</b></div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalCompra')">Cancelar</button>
+      <button class="btn btn-acento" id="btnGuardarCompra" onclick="guardarCompra()">✓ Registrar pedido</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Registrar pago a proveedor ═══ -->
+<div class="modal-overlay" id="modalPagoCompra">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-titulo">💵 Registrar Pago al Proveedor</div>
+      <button class="modal-cerrar" onclick="cerrarModal('modalPagoCompra')">✕</button>
+    </div>
+    <input type="hidden" id="pagoCompraId">
+    <p id="pagoCompraInfo" class="texto-suave" style="font-size:13px;margin-bottom:16px">-</p>
+    <div class="form-grupo">
+      <label class="form-label">Monto del pago ($)</label>
+      <input type="number" class="form-input" id="pagoCompraMonto" placeholder="0.00" min="0" step="0.01" inputmode="decimal">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalPagoCompra')">Cancelar</button>
+      <button class="btn btn-acento" onclick="confirmarPagoCompra()">✓ Registrar pago</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/global.js?v=4.0"></script>
+<script>
+  let empresaId   = null;
+  let empresa     = null;
+  let provActual  = null;
+  let modoEdicion = false;
+  let todosProvs  = [];
+  let articulos   = [];
+  let esAdmin     = false;
+  let _fichaProvId = null; // proveedor actualmente en ficha (para refrescar)
+
+  // ── Init ─────────────────────────────────────────────────────
+  (async () => {
+    const sesion = await verificarSesion();
+    if (!sesion) return;
+    if (sesion.esAdminGlobal && !sesion.empresa) { window.location.href = 'admin-global.html'; return; }
+    empresa   = sesion.empresa;
+    empresaId = empresa?.id;
+    esAdmin   = sesion.esAdminGlobal || sesion.perfil.rol === 'admin_empresa';
+
+    if (empresa?.modulos_habilitados?.proveedores === false) {
+      document.querySelector('.main-content').innerHTML = `<div class="estado-vacio" style="padding-top:80px"><div class="estado-vacio-icono">🔒</div><div class="estado-vacio-titulo">Módulo deshabilitado</div><a href="dashboard.html" class="btn btn-ghost mt-16">← Volver</a></div>`;
+      return;
+    }
+    construirNav();
+    await cargarArticulosSelect();
+    await cargarProveedores();
+    let timer;
+    document.getElementById('buscarProv').addEventListener('input', e => {
+      clearTimeout(timer); timer = setTimeout(() => filtrarProveedores(e.target.value.trim()), 300);
+    });
+  })();
+
+  // ── Cargar ────────────────────────────────────────────────────
+  async function cargarProveedores() {
+    const { data, error } = await sb.from('proveedores').select('*')
+      .eq('empresa_id', empresaId).eq('activo', true).order('nombre');
+    if (error) { mostrarAlerta('Error al cargar: ' + error.message, 'error'); return; }
+    todosProvs = data || [];
+    renderProveedores(todosProvs);
+  }
+
+  async function cargarArticulosSelect() {
+    const { data } = await sb.from('articulos').select('id,nombre,precio').eq('empresa_id', empresaId).eq('activo', true).order('nombre');
+    articulos = data || [];
+    const nArt = empresa?.modulo_articulos_nombre || 'Artículos';
+    document.getElementById('lblCompraArticulo').textContent = nArt + ' (opcional)';
+    document.getElementById('compraArticulo').innerHTML =
+      `<option value="">— Seleccioná un ${nArt.slice(0,-1).toLowerCase()} (opcional) —</option>` +
+      articulos.map(a => `<option value="${a.id}" data-precio="${a.precio}">${a.nombre}</option>`).join('');
+  }
+
+  function filtrarProveedores(q) {
+    if (!q) { renderProveedores(todosProvs); return; }
+    const ql = q.toLowerCase();
+    renderProveedores(todosProvs.filter(p =>
+      p.nombre.toLowerCase().includes(ql) ||
+      (p.codigo||'').toLowerCase().includes(ql) ||
+      (p.telefono||'').includes(q)
+    ));
+  }
+
+  function renderProveedores(lista) {
+    const cont = document.getElementById('listaProveedores');
+    if (!lista.length) {
+      cont.innerHTML = `<div class="estado-vacio" style="grid-column:1/-1">
+        <div class="estado-vacio-icono">🏭</div>
+        <div class="estado-vacio-titulo">Sin proveedores</div>
+        <div class="estado-vacio-desc">Agregá tu primer proveedor.</div>
+        <button class="btn btn-acento" onclick="abrirNuevo()">➕ Nuevo Proveedor</button>
+      </div>`;
+      return;
+    }
+    cont.innerHTML = lista.map(p => `
+      <div class="proveedor-card" onclick="verFicha('${p.id}')">
+        <div class="proveedor-card-codigo">${p.codigo ? '# ' + p.codigo : 'Sin código'}</div>
+        <div class="proveedor-card-nombre">${p.nombre}</div>
+        <div class="proveedor-card-datos">
+          ${p.telefono ? `<span>📞 ${p.telefono}</span>` : ''}
+          ${p.email    ? `<span>✉ ${p.email}</span>`    : ''}
+          ${p.contacto ? `<span>👤 ${p.contacto}</span>` : ''}
+        </div>
+        <div class="proveedor-card-footer">
+          <span class="texto-suave" style="font-size:12px">${p.direccion||'Sin dirección'}</span>
+          <div style="display:flex;gap:6px" onclick="event.stopPropagation()">
+            <button class="btn btn-sm btn-secundario" onclick="abrirNuevaCompra('${p.id}')">🛒 Pedido</button>
+            <button class="btn btn-sm btn-ghost" onclick="editarProveedor('${p.id}')">✏️</button>
+            ${esAdmin ? `<button class="btn btn-sm btn-peligro" onclick="eliminarProveedor('${p.id}')">🗑️</button>` : ''}
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── Nuevo / Editar ────────────────────────────────────────────
+  async function abrirNuevo() {
+    provActual = null; modoEdicion = false;
+    document.getElementById('modalProvTitulo').textContent = '🏭 Nuevo Proveedor';
+    ['provId','provCodigo','provNombre','provTelefono','provEmail','provDireccion','provCuit','provContacto','provNotas'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    limpiarErrorCodigo('provErrCodigo');
+    // Sugerir código
+    const sig = await siguienteCodigo('proveedor', empresaId);
+    const sugerido = document.getElementById('provCodigoSugerido');
+    sugerido.textContent = `Sugerido: ${sig} (click para usar)`;
+    sugerido.dataset.valor = sig;
+    abrirModal('modalProv');
+  }
+
+  async function editarProveedor(id) {
+    const p = todosProvs.find(x => x.id === id); if (!p) return;
+    provActual = p; modoEdicion = true;
+    document.getElementById('modalProvTitulo').textContent = '✏️ Editar Proveedor';
+    document.getElementById('provId').value       = p.id;
+    document.getElementById('provCodigo').value   = p.codigo   || '';
+    document.getElementById('provNombre').value   = p.nombre;
+    document.getElementById('provTelefono').value = p.telefono || '';
+    document.getElementById('provEmail').value    = p.email    || '';
+    document.getElementById('provDireccion').value= p.direccion|| '';
+    document.getElementById('provCuit').value     = p.cuit     || '';
+    document.getElementById('provContacto').value = p.contacto || '';
+    document.getElementById('provNotas').value    = p.notas    || '';
+    document.getElementById('provCodigoSugerido').textContent = '';
+    limpiarErrorCodigo('provErrCodigo');
+    abrirModal('modalProv');
+  }
+
+  async function guardarProveedor() {
+    const nombre = document.getElementById('provNombre').value.trim();
+    const codigo = document.getElementById('provCodigo').value.trim() || null;
+    if (!nombre) { mostrarAlerta('El nombre es obligatorio', 'error'); return; }
+
+    // Validar unicidad del código
+    if (codigo) {
+      const unico = await codigoEsUnico('proveedores', 'codigo', codigo, empresaId, provActual?.id || null);
+      if (!unico) { document.getElementById('provErrCodigo').classList.add('visible'); return; }
+    }
+
+    const datos = {
+      empresa_id: empresaId, nombre, codigo,
+      telefono:  document.getElementById('provTelefono').value.trim() || null,
+      email:     document.getElementById('provEmail').value.trim()    || null,
+      direccion: document.getElementById('provDireccion').value.trim()|| null,
+      cuit:      document.getElementById('provCuit').value.trim()     || null,
+      contacto:  document.getElementById('provContacto').value.trim() || null,
+      notas:     document.getElementById('provNotas').value.trim()    || null,
+    };
+
+    const btn = document.getElementById('btnGuardarProv');
+    btn.disabled = true; btn.textContent = 'Guardando...';
+    try {
+      const { error } = modoEdicion && provActual
+        ? await sb.from('proveedores').update(datos).eq('id', provActual.id)
+        : await sb.from('proveedores').insert(datos);
+      if (error) throw error;
+      mostrarAlerta(modoEdicion ? 'Proveedor actualizado ✓' : 'Proveedor creado ✓', 'exito');
+      cerrarModal('modalProv');
+      await cargarProveedores();
+    } catch (err) { mostrarAlerta('Error: ' + err.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = '✓ Guardar'; }
+  }
+
+  async function eliminarProveedor(id) {
+    if (!confirm('¿Desactivar este proveedor?')) return;
+    await sb.from('proveedores').update({ activo: false }).eq('id', id);
+    mostrarAlerta('Proveedor eliminado ✓', 'exito');
+    cargarProveedores();
+  }
+
+  // ── Ficha del proveedor ───────────────────────────────────────
+  async function verFicha(id) {
+    _fichaProvId = id;
+    const p = todosProvs.find(x => x.id === id); if (!p) return;
+    document.getElementById('fichaTitulo').textContent = `🏭 ${p.nombre}`;
+    document.getElementById('fichaContenido').innerHTML = '<div class="cargando"><div class="spinner"></div></div>';
+    abrirModal('modalFicha');
+    await renderFicha(p);
+  }
+
+  async function renderFicha(p) {
+    const { data: compras } = await sb.from('compras').select('*')
+      .eq('empresa_id', empresaId).eq('proveedor_id', p.id)
+      .order('created_at', { ascending: false });
+
+    const totalComprado = compras?.reduce((s, c) => s + Number(c.total||0), 0) || 0;
+    const totalDeuda    = compras?.reduce((s, c) => s + Number(c.saldo||0), 0) || 0;
+    const totalPagado   = compras?.reduce((s, c) => s + Number(c.pagado||0), 0) || 0;
+    const PAGO_LABEL    = { efectivo:'💵 Efectivo', transferencia:'🏦 Transf.', tarjeta:'💳 Tarjeta', cuenta_corriente:'📋 Cta.cte.', cheque:'📜 Cheque' };
+
+    document.getElementById('fichaContenido').innerHTML = `
+      <div class="ficha-header">
+        <div class="ficha-avatar">🏭</div>
+        <div>
+          <div class="ficha-nombre">${p.nombre}</div>
+          ${p.codigo ? `<div class="ficha-codigo"># ${p.codigo}</div>` : ''}
+        </div>
+      </div>
+
+      <div class="ficha-datos-grid">
+        <div class="ficha-dato"><div class="ficha-dato-label">Teléfono</div><div class="ficha-dato-valor">${p.telefono ? `<a href="tel:${p.telefono}" style="color:var(--azul-accion)">${p.telefono}</a>` : '-'}</div></div>
+        <div class="ficha-dato"><div class="ficha-dato-label">Email</div><div class="ficha-dato-valor" style="font-size:13px">${p.email||'-'}</div></div>
+        <div class="ficha-dato"><div class="ficha-dato-label">CUIT</div><div class="ficha-dato-valor">${p.cuit||'-'}</div></div>
+        <div class="ficha-dato"><div class="ficha-dato-label">Contacto</div><div class="ficha-dato-valor">${p.contacto||'-'}</div></div>
+        ${p.direccion ? `<div class="ficha-dato" style="grid-column:1/-1"><div class="ficha-dato-label">Dirección</div><div class="ficha-dato-valor">${p.direccion}</div></div>` : ''}
+        ${p.notas     ? `<div class="ficha-dato" style="grid-column:1/-1"><div class="ficha-dato-label">Notas</div><div class="ficha-dato-valor" style="font-size:13px">${p.notas}</div></div>` : ''}
+      </div>
+
+      <div class="resumen-compras">
+        <div class="resumen-compra-item"><div class="resumen-compra-valor">${compras?.length||0}</div><div class="resumen-compra-label">Pedidos totales</div></div>
+        <div class="resumen-compra-item"><div class="resumen-compra-valor" style="color:var(--azul-nav)">${formatoPeso(totalComprado)}</div><div class="resumen-compra-label">Total comprado</div></div>
+        <div class="resumen-compra-item"><div class="resumen-compra-valor" style="color:var(--verde)">${formatoPeso(totalPagado)}</div><div class="resumen-compra-label">Total pagado</div></div>
+        <div class="resumen-compra-item"><div class="resumen-compra-valor" style="color:var(--rojo)">${formatoPeso(totalDeuda)}</div><div class="resumen-compra-label">Deuda pendiente</div></div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h3 style="font-size:15px;font-weight:700">📋 Historial de pedidos</h3>
+        <button class="btn btn-sm btn-secundario" onclick="abrirNuevaCompra('${p.id}')">🛒 Nuevo pedido</button>
+      </div>
+
+      ${!compras?.length ? `<p class="texto-suave texto-centro" style="padding:20px">Sin pedidos registrados aún.</p>` : `
+        <div class="tabla-contenedor">
+          <table class="tabla">
+            <thead><tr><th>Fecha</th><th>Artículo/Detalle</th><th>Cant.</th><th>Total</th><th>Pagado</th><th>Saldo</th><th>Estado</th><th>F. Pago</th><th>Acción</th></tr></thead>
+            <tbody>
+              ${compras.map(c => `
+                <tr>
+                  <td style="white-space:nowrap">${formatoFecha(c.created_at)}</td>
+                  <td class="fw-600">${c.articulo_nombre||c.notas||'-'}${c.nro_remito?`<br><small class="texto-suave">Remito: ${c.nro_remito}</small>`:''}</td>
+                  <td>${c.cantidad}</td>
+                  <td><b>${formatoPeso(c.total)}</b></td>
+                  <td class="texto-verde">${formatoPeso(c.pagado)}</td>
+                  <td class="${Number(c.saldo)>0?'texto-rojo fw-600':'texto-suave'}">${formatoPeso(c.saldo)}</td>
+                  <td><span class="badge ${c.estado==='pagado'?'badge-verde':c.estado==='parcial'?'badge-naranja':'badge-rojo'}">${c.estado}</span></td>
+                  <td>${PAGO_LABEL[c.forma_pago]||c.forma_pago}</td>
+                  <td>
+                    ${Number(c.saldo)>0?`<button class="btn btn-sm btn-secundario" onclick="abrirPagoCompra('${c.id}',${c.saldo})">💵 Pagar</button>`:'<span class="badge badge-verde">✓ Pagado</span>'}
+                  </td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`}
+    `;
+  }
+
+  // ── Compras ───────────────────────────────────────────────────
+  function abrirNuevaCompra(provId) {
+    document.getElementById('compraProvId').value   = provId;
+    document.getElementById('compraId').value       = '';
+    document.getElementById('compraArticulo').value = '';
+    document.getElementById('compraDesc').value     = '';
+    document.getElementById('compraCantidad').value = '1';
+    document.getElementById('compraPrecio').value   = '';
+    document.getElementById('compraFormaPago').value= 'efectivo';
+    document.getElementById('compraPagado').value   = '0';
+    document.getElementById('compraRemito').value   = '';
+    document.getElementById('compraNotas').value    = '';
+    calcularCompra();
+    cerrarModal('modalFicha');
+    abrirModal('modalCompra');
+  }
+
+  function actualizarPrecioCompra() {
+    const sel = document.getElementById('compraArticulo');
+    const opt = sel.options[sel.selectedIndex];
+    if (opt?.dataset?.precio) document.getElementById('compraPrecio').value = opt.dataset.precio;
+    // Rellenar descripción con el nombre del artículo si está vacía
+    const desc = document.getElementById('compraDesc');
+    if (opt?.text && !desc.value) desc.value = opt.text.split('(')[0].trim();
+    calcularCompra();
+  }
+
+  function calcularCompra() {
+    const cant   = parseFloat(document.getElementById('compraCantidad').value)||1;
+    const precio = parseFloat(document.getElementById('compraPrecio').value)||0;
+    const pagado = parseFloat(document.getElementById('compraPagado').value)||0;
+    const total  = cant * precio;
+    const saldo  = Math.max(0, total - pagado);
+    document.getElementById('cTotal').textContent  = formatoPeso(total);
+    document.getElementById('cPagado').textContent = formatoPeso(pagado);
+    document.getElementById('cSaldo').textContent  = formatoPeso(saldo);
+  }
+
+  async function guardarCompra() {
+    const provId = document.getElementById('compraProvId').value;
+    const desc   = document.getElementById('compraDesc').value.trim();
+    const precio = parseFloat(document.getElementById('compraPrecio').value)||0;
+    const cant   = parseInt(document.getElementById('compraCantidad').value)||1;
+    const pagado = parseFloat(document.getElementById('compraPagado').value)||0;
+    const artId  = document.getElementById('compraArticulo').value||null;
+    const fp     = document.getElementById('compraFormaPago').value;
+    const remito = document.getElementById('compraRemito').value.trim()||null;
+    const notas  = document.getElementById('compraNotas').value.trim()||null;
+
+    if (!desc) { mostrarAlerta('El detalle del pedido es obligatorio', 'error'); return; }
+    if (!precio){ mostrarAlerta('El precio no puede ser 0', 'error'); return; }
+
+    const prov   = todosProvs.find(p => p.id === provId);
+    const artSel = articulos.find(a => a.id === artId);
+    const total  = cant * precio;
+    const saldo  = Math.max(0, total - pagado);
+    let estado   = saldo === 0 ? 'pagado' : (pagado > 0 ? 'parcial' : 'pendiente');
+
+    const btn = document.getElementById('btnGuardarCompra');
+    btn.disabled = true; btn.textContent = 'Guardando...';
+    try {
+      const { error } = await sb.from('compras').insert({
+        empresa_id:      empresaId,
+        proveedor_id:    provId,
+        proveedor_nombre:prov?.nombre||null,
+        articulo_id:     artId,
+        articulo_nombre: artSel?.nombre||desc,
+        cantidad:        cant,
+        precio_unitario: precio,
+        total, forma_pago: fp, estado,
+        pagado, saldo, nro_remito: remito, notas,
+      });
+      if (error) throw error;
+
+      // Si hay artículo, aumentar stock
+      if (artSel) {
+        await sb.from('articulos').update({ stock: (artSel.stock||0) + cant }).eq('id', artId);
+      }
+
+      mostrarAlerta('Pedido registrado ✓', 'exito');
+      cerrarModal('modalCompra');
+      await cargarProveedores();
+      // Si la ficha estaba abierta, refrescar
+      if (_fichaProvId === provId) {
+        const provRefresh = todosProvs.find(p => p.id === provId);
+        if (provRefresh) { abrirModal('modalFicha'); await renderFicha(provRefresh); }
+      }
+    } catch (err) { mostrarAlerta('Error: ' + err.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = '✓ Registrar pedido'; }
+  }
+
+  // ── Pago a proveedor ──────────────────────────────────────────
+  function abrirPagoCompra(compraId, saldo) {
+    document.getElementById('pagoCompraId').value   = compraId;
+    document.getElementById('pagoCompraMonto').value= '';
+    document.getElementById('pagoCompraInfo').textContent = `Saldo actual: ${formatoPeso(saldo)}`;
+    cerrarModal('modalFicha');
+    abrirModal('modalPagoCompra');
+  }
+
+  async function confirmarPagoCompra() {
+    const compraId = document.getElementById('pagoCompraId').value;
+    const monto    = parseFloat(document.getElementById('pagoCompraMonto').value)||0;
+    if (monto <= 0) { mostrarAlerta('Ingresá un monto válido', 'error'); return; }
+
+    const { data: compra } = await sb.from('compras').select('*').eq('id', compraId).single();
+    if (!compra) return;
+
+    const nuevoSaldo  = Math.max(0, Number(compra.saldo) - monto);
+    const nuevoPagado = Number(compra.pagado) + monto;
+    const nuevoEstado = nuevoSaldo === 0 ? 'pagado' : 'parcial';
+
+    const { error } = await sb.from('compras').update({
+      saldo: nuevoSaldo, pagado: nuevoPagado, estado: nuevoEstado
+    }).eq('id', compraId);
+
+    if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
+    mostrarAlerta('Pago registrado ✓', 'exito');
+    cerrarModal('modalPagoCompra');
+    await cargarProveedores();
+    // Refrescar ficha
+    if (_fichaProvId) {
+      const prov = todosProvs.find(p => p.id === _fichaProvId);
+      if (prov) { abrirModal('modalFicha'); await renderFicha(prov); }
+    }
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────
+  function limpiarErrorCodigo(id) { document.getElementById(id)?.classList.remove('visible'); }
+
+  function usarSugerido(inputId, sugeridoId) {
+    const s = document.getElementById(sugeridoId);
+    if (s?.dataset?.valor) document.getElementById(inputId).value = s.dataset.valor;
+  }
+</script>
+</body>
+</html>

@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Stockia — Admin Empresa</title>
-  <!-- v3.0 -->
+  <!-- v4.0 -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/global.css?v=3.0">
+  <link rel="stylesheet" href="css/global.css?v=4.0">
   <style>
     .seccion { margin-bottom: 24px; }
     .seccion-titulo {
@@ -76,6 +76,21 @@
         <div>
           <h1 class="page-titulo">⚙️ Configuración</h1>
           <p class="page-subtitulo" id="subtituloEmpresa">-</p>
+        </div>
+      </div>
+
+      <!-- Tipo de negocio -->
+      <div class="card seccion">
+        <div class="seccion-titulo">🏪 Tipo de negocio</div>
+        <p class="texto-suave" style="font-size:13px;margin-bottom:14px">
+          Define el comportamiento del sistema para ventas y clientes.
+        </p>
+        <select class="form-select" id="selectTipoNegocio" style="max-width:400px">
+          <option value="mayorista">🏪 Mayorista — requiere datos completos del cliente</option>
+          <option value="kiosco_almacen">🛒 Kiosco / Almacén — venta rápida sin registrar cliente</option>
+        </select>
+        <div style="margin-top:10px">
+          <button class="btn btn-acento" onclick="guardarTipoNegocio()">✓ Guardar tipo</button>
         </div>
       </div>
 
@@ -200,7 +215,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/global.js?v=3.0"></script>
+  <script src="js/global.js?v=4.0"></script>
   <script>
     let empresaId = null;
     let empresa   = null;
@@ -233,6 +248,10 @@
         document.getElementById('menuEmpresaInfo').textContent   = empresa.nombre;
       }
 
+      // Cargar tipo de negocio actual
+      const selTipo = document.getElementById('selectTipoNegocio');
+      if (selTipo) selTipo.value = empresa?.tipo_negocio || 'mayorista';
+
       cargarModulos();
       cargarUsuarios();
     })();
@@ -256,6 +275,15 @@
           </label>
         </div>
       `).join('');
+    }
+
+    async function guardarTipoNegocio() {
+      const tipo = document.getElementById('selectTipoNegocio').value;
+      const { error } = await sb.from('empresas').update({ tipo_negocio: tipo }).eq('id', empresaId);
+      if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
+      // Actualizar en sessionStorage
+      if (empresa) { empresa.tipo_negocio = tipo; guardarEmpresaActiva(empresa); }
+      mostrarAlerta('Tipo de negocio actualizado ✓', 'exito');
     }
 
     async function guardarModulos() {
