@@ -31,6 +31,22 @@
     .color-opt { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: .15s; }
     .color-opt.sel { border-color: var(--texto); }
     .placeholder-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+    /* Tabs dentro del modal editar empresa */
+    .modal-tabs { display:flex;gap:4px;padding:4px;background:var(--bg);border-radius:var(--r-md);margin-bottom:16px; }
+    .modal-tab { flex:1;padding:8px 10px;border:none;background:none;cursor:pointer;border-radius:var(--r-sm);font-size:12px;font-weight:600;color:var(--texto-suave);font-family:var(--font);transition:var(--transition);text-align:center; }
+    .modal-tab.activo { background:#fff;color:var(--azul-nav);box-shadow:var(--sombra-sm); }
+    .modal-tab-panel { display:none; }
+    .modal-tab-panel.activo { display:block; }
+    /* Funciones config */
+    .funcion-card { background:var(--bg);border-radius:var(--r-md);padding:14px;margin-bottom:10px;border:1px solid var(--borde); }
+    .funcion-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:8px; }
+    .funcion-titulo { font-size:14px;font-weight:700;color:var(--texto);display:flex;align-items:center;gap:6px; }
+    .funcion-opciones { padding-top:10px;border-top:1px solid var(--borde);display:none; }
+    .funcion-opciones.visible { display:block; }
+    .funcion-opcion { display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--borde); }
+    .funcion-opcion:last-child { border-bottom:none; }
+    .funcion-opcion-label { font-size:13px;color:var(--texto); }
+    .funcion-opcion-desc { font-size:11px;color:var(--texto-suave); }
   </style>
 </head>
 <body>
@@ -178,54 +194,127 @@
       </div>
       <input type="hidden" id="editEmpId">
 
-      <div class="form-grupo">
-        <label class="form-label">Nombre</label>
-        <input type="text" class="form-input" id="editEmpNombre">
-      </div>
-      <div class="form-grupo">
-        <label class="form-label">Color</label>
-        <div class="color-picker-wrap" id="colorPickerEdit"></div>
-        <input type="hidden" id="editEmpColor">
+      <!-- Tabs del modal -->
+      <div class="modal-tabs">
+        <button class="modal-tab activo" onclick="switchModalTab('general',this)">⚙️ General</button>
+        <button class="modal-tab" onclick="switchModalTab('modulos',this)">🔌 Módulos</button>
+        <button class="modal-tab" onclick="switchModalTab('funciones',this)">📊 Funciones</button>
       </div>
 
-      <div class="form-grupo">
-        <label class="form-label">Nombre del módulo de artículos</label>
-        <input type="text" class="form-input" id="editEmpModuloNombre">
-      </div>
-      <div class="form-grupo">
-        <label class="form-label">Ícono del módulo</label>
-        <input type="text" class="form-input" id="editEmpModuloIcono" style="font-size:20px">
-      </div>
-
-      <div class="form-grupo">
-        <label class="form-label">Textos de ejemplo del formulario de artículos</label>
-        <div class="placeholder-grid">
-          <div>
-            <label class="form-label" style="font-weight:500;font-size:12px">Nombre del artículo</label>
-            <input type="text" class="form-input" id="editPhNombre" placeholder="Ej: Camisa manga larga">
+      <!-- TAB: General -->
+      <div class="modal-tab-panel activo" id="tabGeneral">
+        <div class="form-grupo">
+          <label class="form-label">Nombre</label>
+          <input type="text" class="form-input" id="editEmpNombre">
+        </div>
+        <div class="form-grupo">
+          <label class="form-label">Color</label>
+          <div class="color-picker-wrap" id="colorPickerEdit"></div>
+          <input type="hidden" id="editEmpColor">
+        </div>
+        <div class="form-grupo">
+          <label class="form-label">Nombre del módulo de artículos</label>
+          <input type="text" class="form-input" id="editEmpModuloNombre">
+        </div>
+        <div class="form-grupo">
+          <label class="form-label">Ícono del módulo</label>
+          <input type="text" class="form-input" id="editEmpModuloIcono" style="font-size:20px">
+        </div>
+        <div class="form-grupo">
+          <label class="form-label">Textos de ejemplo del formulario de artículos</label>
+          <div class="placeholder-grid">
+            <div>
+              <label class="form-label" style="font-weight:500;font-size:12px">Nombre del artículo</label>
+              <input type="text" class="form-input" id="editPhNombre" placeholder="Ej: Camisa manga larga">
+            </div>
+            <div>
+              <label class="form-label" style="font-weight:500;font-size:12px">Descripción</label>
+              <input type="text" class="form-input" id="editPhDesc" placeholder="Descripción del artículo">
+            </div>
+            <div>
+              <label class="form-label" style="font-weight:500;font-size:12px">Código</label>
+              <input type="text" class="form-input" id="editPhCodigo" placeholder="Ej: ART-001">
+            </div>
           </div>
-          <div>
-            <label class="form-label" style="font-weight:500;font-size:12px">Descripción</label>
-            <input type="text" class="form-input" id="editPhDesc" placeholder="Descripción del artículo">
-          </div>
-          <div>
-            <label class="form-label" style="font-weight:500;font-size:12px">Código</label>
-            <input type="text" class="form-input" id="editPhCodigo" placeholder="Ej: ART-001">
-          </div>
+        </div>
+        <div class="form-grupo">
+          <label class="form-label">Tipo de negocio</label>
+          <select class="form-select" id="editEmpTipoNegocio">
+            <option value="mayorista">🏪 Mayorista</option>
+            <option value="kiosco_almacen">🛒 Kiosco / Almacén</option>
+          </select>
         </div>
       </div>
 
-      <div class="form-grupo">
-        <label class="form-label">Tipo de negocio</label>
-        <select class="form-select" id="editEmpTipoNegocio">
-          <option value="mayorista">🏪 Mayorista</option>
-          <option value="kiosco_almacen">🛒 Kiosco / Almacén</option>
-        </select>
+      <!-- TAB: Módulos -->
+      <div class="modal-tab-panel" id="tabModulos">
+        <div class="modulos-grid" id="editModulos"><!-- generado por JS --></div>
       </div>
-      <div class="form-grupo">
-        <label class="form-label">Módulos habilitados</label>
-        <div class="modulos-grid" id="editModulos">
-          <!-- generado por JS -->
+
+      <!-- TAB: Funciones avanzadas -->
+      <div class="modal-tab-panel" id="tabFunciones">
+        <p class="texto-suave" style="font-size:13px;margin-bottom:14px">
+          Activá funcionalidades avanzadas para esta empresa. Cada una puede configurarse de forma independiente.
+        </p>
+
+        <!-- Resumen de ventas -->
+        <div class="funcion-card">
+          <div class="funcion-header">
+            <div class="funcion-titulo">📊 Resumen de ventas</div>
+            <label class="toggle">
+              <input type="checkbox" id="fnResumen" onchange="toggleFuncionOpciones('resumen',this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div style="font-size:12px;color:var(--texto-suave)">
+            Permite ver totales por período (día, semana, quincena, mes, año) y exportar en PDF y Excel.
+          </div>
+        </div>
+
+        <!-- Arqueo de caja -->
+        <div class="funcion-card">
+          <div class="funcion-header">
+            <div class="funcion-titulo">🏦 Arqueo de caja</div>
+            <label class="toggle">
+              <input type="checkbox" id="fnArqueo" onchange="toggleFuncionOpciones('arqueo',this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div style="font-size:12px;color:var(--texto-suave)">
+            Cierre de caja con conteo físico de efectivo vs sistema. Guarda historial de arqueos.
+          </div>
+          <div class="funcion-opciones" id="opcionesArqueo">
+            <div class="funcion-opcion">
+              <div>
+                <div class="funcion-opcion-label">¿Quién puede arquear?</div>
+                <div class="funcion-opcion-desc">Solo admin o todos los operadores</div>
+              </div>
+              <select class="form-select" id="fnArqueoQuien" style="width:auto;font-size:13px">
+                <option value="admin">Solo admin/dueño</option>
+                <option value="todos">Todos los usuarios</option>
+              </select>
+            </div>
+            <div class="funcion-opcion">
+              <div>
+                <div class="funcion-opcion-label">Modalidad de cierre</div>
+                <div class="funcion-opcion-desc">Un cierre por día o por turno (mañana/tarde)</div>
+              </div>
+              <select class="form-select" id="fnArqueoTurnos" style="width:auto;font-size:13px">
+                <option value="diario">Un cierre por día</option>
+                <option value="turno">Por turno (mañana/tarde)</option>
+              </select>
+            </div>
+            <div class="funcion-opcion">
+              <div>
+                <div class="funcion-opcion-label">Registrar efectivo físico</div>
+                <div class="funcion-opcion-desc">Contar billetes y comparar con el sistema</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="fnArqueoFisico" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -430,6 +519,19 @@
       cargarEmpresas();
     }
 
+    function switchModalTab(tab, btn) {
+      document.querySelectorAll('.modal-tab').forEach(b => b.classList.remove('activo'));
+      document.querySelectorAll('.modal-tab-panel').forEach(p => p.classList.remove('activo'));
+      btn.classList.add('activo');
+      const map = { general:'tabGeneral', modulos:'tabModulos', funciones:'tabFunciones' };
+      document.getElementById(map[tab])?.classList.add('activo');
+    }
+
+    function toggleFuncionOpciones(fn, activo) {
+      const el = document.getElementById('opciones' + fn.charAt(0).toUpperCase() + fn.slice(1));
+      if (el) el.classList.toggle('visible', activo);
+    }
+
     async function abrirEditarEmpresa(id) {
       const { data: emp } = await sb.from('empresas').select('*').eq('id', id).single();
       if (!emp) return;
@@ -443,6 +545,20 @@
       renderColorPicker('colorPickerEdit', 'editEmpColor', emp.color || '#1e3a8a');
 
       document.getElementById('editEmpTipoNegocio').value = emp.tipo_negocio || 'mayorista';
+
+      // Resetear tabs al abrir
+      document.querySelectorAll('.modal-tab').forEach((b,i)=>b.classList.toggle('activo',i===0));
+      document.querySelectorAll('.modal-tab-panel').forEach((p,i)=>p.classList.toggle('activo',i===0));
+
+      // Cargar config funciones
+      const cf = emp.config_funciones || {};
+      document.getElementById('fnResumen').checked         = cf.resumen_ventas || false;
+      document.getElementById('fnArqueo').checked          = cf.arqueo_caja    || false;
+      document.getElementById('fnArqueoQuien').value       = cf.arqueo_quien   || 'admin';
+      document.getElementById('fnArqueoTurnos').value      = cf.arqueo_turnos  || 'diario';
+      document.getElementById('fnArqueoFisico').checked    = cf.arqueo_registra_fisico !== false;
+      // Mostrar/ocultar opciones arqueo
+      document.getElementById('opcionesArqueo')?.classList.toggle('visible', cf.arqueo_caja || false);
 
       // Módulos
       const modulos = emp.modulos_habilitados || {};
@@ -480,6 +596,13 @@
         modulo_articulos_placeholder_desc:   document.getElementById('editPhDesc').value.trim(),
         modulo_articulos_placeholder_codigo:  document.getElementById('editPhCodigo').value.trim(),
         modulos_habilitados: modulos,
+        config_funciones: {
+          resumen_ventas:          document.getElementById('fnResumen').checked,
+          arqueo_caja:             document.getElementById('fnArqueo').checked,
+          arqueo_quien:            document.getElementById('fnArqueoQuien').value,
+          arqueo_turnos:           document.getElementById('fnArqueoTurnos').value,
+          arqueo_registra_fisico:  document.getElementById('fnArqueoFisico').checked,
+        },
       }).eq('id', id);
       if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
       mostrarAlerta('Empresa actualizada ✓', 'exito');

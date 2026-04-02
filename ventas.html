@@ -4,10 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Stockia — Ventas</title>
-  <!-- v4.1 -->
+  <!-- v4.2 -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/global.css?v=4.0">
+  <!-- jsPDF para exportar PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- SheetJS para exportar Excel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
+    /* ── Estilos base heredados ── */
     .resumen-venta{background:var(--bg);border-radius:var(--r-md);padding:14px;margin-top:12px;border:1px solid var(--borde);}
     .resumen-row{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;}
     .resumen-total{font-size:18px;font-weight:800;color:var(--azul-nav);}
@@ -22,6 +27,134 @@
     .pago-item-monto{font-size:15px;font-weight:700;color:var(--verde);}
     .pago-item-fecha{font-size:11px;color:var(--texto-suave);}
     .pago-item-notas{font-size:11px;color:var(--texto-suave);font-style:italic;}
+
+    /* ── Barra de acciones superior ── */
+    .ventas-acciones-bar {
+      display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+      margin-bottom: 14px;
+    }
+    .btn-resumen {
+      background: var(--azul-nav); color: #fff;
+      border: none; border-radius: var(--r-md);
+      padding: 9px 16px; font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: var(--font);
+      display: flex; align-items: center; gap: 6px;
+      transition: var(--transition);
+    }
+    .btn-resumen:hover { background: #162d6e; }
+    .btn-arqueo {
+      background: var(--verde); color: #fff;
+      border: none; border-radius: var(--r-md);
+      padding: 9px 16px; font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: var(--font);
+      display: flex; align-items: center; gap: 6px;
+      transition: var(--transition);
+    }
+    .btn-arqueo:hover { background: var(--verde-hover); }
+
+    /* ── Panel resumen / arqueo (debajo del header) ── */
+    .panel-flotante {
+      background: var(--bg-card); border-radius: var(--r-lg);
+      border: 2px solid var(--azul-accion);
+      padding: 20px; margin-bottom: 16px;
+      box-shadow: var(--sombra-md);
+      display: none;
+    }
+    .panel-flotante.activo { display: block; }
+    .panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .panel-titulo { font-size: 16px; font-weight: 700; color: var(--texto); display: flex; align-items: center; gap: 8px; }
+    .panel-cerrar { background: none; border: none; cursor: pointer; font-size: 20px; color: var(--texto-suave); padding: 2px; }
+
+    /* ── Selector de período ── */
+    .periodo-tabs {
+      display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 16px;
+    }
+    .periodo-tab {
+      padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      border: 2px solid var(--borde); background: #fff; cursor: pointer;
+      color: var(--texto-suave); font-family: var(--font); transition: var(--transition);
+    }
+    .periodo-tab.activo { background: var(--azul-nav); color: #fff; border-color: var(--azul-nav); }
+    .periodo-rango {
+      display: none; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px;
+    }
+    .periodo-rango.visible { display: flex; }
+
+    /* ── Cards de totales ── */
+    .resumen-cards {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;
+    }
+    .resumen-card {
+      background: var(--bg); border-radius: var(--r-md);
+      padding: 14px; border-left: 4px solid var(--borde);
+    }
+    .resumen-card.efectivo   { border-color: var(--verde); }
+    .resumen-card.transf     { border-color: var(--azul-accion); }
+    .resumen-card.tarjeta    { border-color: var(--naranja); }
+    .resumen-card.cta        { border-color: var(--violeta); }
+    .resumen-card.cobros     { border-color: #0891b2; }
+    .resumen-card.gran-total { border-color: var(--azul-nav); background: #eef2ff; grid-column: 1/-1; }
+    .resumen-card-label { font-size: 11px; font-weight: 700; color: var(--texto-suave); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 4px; }
+    .resumen-card-valor { font-size: 22px; font-weight: 800; color: var(--texto); }
+    .resumen-card-sub   { font-size: 11px; color: var(--texto-suave); margin-top: 2px; }
+
+    /* ── Sección cobros ── */
+    .seccion-cobros { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--borde); }
+    .seccion-titulo { font-size: 13px; font-weight: 700; color: var(--texto); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+
+    /* ── Arqueo de caja ── */
+    .arqueo-seccion { margin-bottom: 16px; }
+    .arqueo-comparacion {
+      display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0;
+    }
+    .arqueo-box {
+      flex: 1; min-width: 130px; padding: 14px; border-radius: var(--r-md);
+      text-align: center; border: 2px solid var(--borde);
+    }
+    .arqueo-box.sistema { border-color: var(--azul-accion); background: #eff6ff; }
+    .arqueo-box.contado { border-color: var(--verde); background: #ecfdf5; }
+    .arqueo-box.diferencia-ok  { border-color: var(--verde); background: #ecfdf5; }
+    .arqueo-box.diferencia-mal { border-color: var(--rojo);  background: #fef2f2; }
+    .arqueo-box-label { font-size: 11px; font-weight: 700; color: var(--texto-suave); text-transform: uppercase; letter-spacing: .4px; }
+    .arqueo-box-valor { font-size: 20px; font-weight: 800; margin-top: 4px; }
+
+    /* Billetes contador */
+    .billetes-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px;
+      margin: 12px 0;
+    }
+    .billete-item {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--bg); border-radius: var(--r-sm);
+      padding: 8px 10px; border: 1px solid var(--borde);
+    }
+    .billete-label { font-size: 13px; font-weight: 600; color: var(--texto); min-width: 55px; }
+    .billete-input {
+      width: 60px; padding: 4px 6px; border: 1px solid var(--borde);
+      border-radius: var(--r-sm); font-size: 14px; font-weight: 700;
+      text-align: center; font-family: var(--font);
+    }
+    .billete-subtotal { font-size: 11px; color: var(--texto-suave); }
+
+    .arqueo-historial-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px; background: var(--bg);
+      border-radius: var(--r-sm); border: 1px solid var(--borde); margin-bottom: 6px;
+    }
+
+    /* ── Botones descarga ── */
+    .descarga-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+
+    @media (min-width: 600px) {
+      .resumen-cards { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (min-width: 900px) {
+      .resumen-cards { grid-template-columns: repeat(5, 1fr); }
+      .resumen-card.gran-total { grid-column: auto; }
+    }
   </style>
 </head>
 <body>
@@ -72,9 +205,95 @@
         <h1 class="page-titulo">💰 Ventas</h1>
         <p class="page-subtitulo">Historial y registro de ventas</p>
       </div>
-      <button class="btn btn-acento btn-lg" onclick="abrirNuevaVenta()">➕ Nueva Venta</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <!-- Botones resumen/arqueo (se muestran según config empresa) -->
+        <button class="btn-resumen" id="btnResumen" style="display:none" onclick="togglePanel('resumen')">
+          📊 Resumen
+        </button>
+        <button class="btn-arqueo" id="btnArqueo" style="display:none" onclick="togglePanel('arqueo')">
+          🏦 Arqueo
+        </button>
+        <button class="btn btn-acento" onclick="abrirNuevaVenta()">➕ Nueva Venta</button>
+      </div>
     </div>
 
+    <!-- ═══ PANEL RESUMEN DE VENTAS ═══ -->
+    <div class="panel-flotante" id="panelResumen">
+      <div class="panel-header">
+        <div class="panel-titulo">📊 Resumen de Ventas</div>
+        <button class="panel-cerrar" onclick="togglePanel('resumen')">✕</button>
+      </div>
+
+      <!-- Selector de período -->
+      <div class="periodo-tabs">
+        <button class="periodo-tab activo" onclick="selPeriodo('hoy',this)">Hoy</button>
+        <button class="periodo-tab" onclick="selPeriodo('semana',this)">Esta semana</button>
+        <button class="periodo-tab" onclick="selPeriodo('quincena',this)">Quincena</button>
+        <button class="periodo-tab" onclick="selPeriodo('mes',this)">Este mes</button>
+        <button class="periodo-tab" onclick="selPeriodo('anio',this)">Este año</button>
+        <button class="periodo-tab" onclick="selPeriodo('rango',this)">📅 Rango</button>
+      </div>
+      <div class="periodo-rango" id="periodoRango">
+        <label style="font-size:12px;font-weight:600;color:var(--texto-suave)">Desde:</label>
+        <input type="date" class="form-input" id="rangoDesde" style="width:auto" onchange="calcularResumen()">
+        <label style="font-size:12px;font-weight:600;color:var(--texto-suave)">Hasta:</label>
+        <input type="date" class="form-input" id="rangoHasta" style="width:auto" onchange="calcularResumen()">
+      </div>
+
+      <div id="resumenContenido">
+        <div class="cargando"><div class="spinner"></div><span>Calculando...</span></div>
+      </div>
+
+      <div class="descarga-bar" id="descargaBarResumen">
+        <button class="btn btn-primario btn-sm" onclick="exportarResumenPDF()">📄 Descargar PDF</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportarResumenExcel()">📊 Descargar Excel</button>
+      </div>
+    </div>
+
+    <!-- ═══ PANEL ARQUEO DE CAJA ═══ -->
+    <div class="panel-flotante" id="panelArqueo" style="border-color:var(--verde)">
+      <div class="panel-header">
+        <div class="panel-titulo">🏦 Arqueo de Caja</div>
+        <button class="panel-cerrar" onclick="togglePanel('arqueo')">✕</button>
+      </div>
+
+      <!-- Turno -->
+      <div class="form-grupo" id="grupoTurno" style="display:none">
+        <label class="form-label">Turno</label>
+        <select class="form-select" id="arqueoTurno" style="max-width:200px" onchange="cargarDatosArqueo()">
+          <option value="mañana">🌅 Mañana</option>
+          <option value="tarde">🌆 Tarde</option>
+        </select>
+      </div>
+
+      <!-- Datos del sistema -->
+      <div id="arqueoSistema">
+        <div class="cargando"><div class="spinner"></div><span>Calculando...</span></div>
+      </div>
+
+      <!-- Conteo físico (si está habilitado) -->
+      <div id="arqueoFisicoSection" style="display:none">
+        <div class="seccion-titulo" style="margin-top:16px">💵 Conteo de efectivo físico</div>
+        <div class="billetes-grid" id="billetesGrid"></div>
+        <div class="arqueo-comparacion" id="arqueoComparacion"></div>
+        <div class="form-grupo">
+          <label class="form-label">Notas del arqueo</label>
+          <input type="text" class="form-input" id="arqueoNotas" placeholder="Observaciones del cierre...">
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-acento" onclick="guardarArqueo()">✓ Cerrar y guardar arqueo</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportarArqueoPDF()">📄 PDF del arqueo</button>
+        </div>
+      </div>
+
+      <!-- Historial de arqueos -->
+      <div class="seccion-cobros" id="historialArqueos" style="display:none">
+        <div class="seccion-titulo">📋 Últimos arqueos</div>
+        <div id="listaArqueos"></div>
+      </div>
+    </div>
+
+    <!-- Filtros tabla de ventas -->
     <div class="card mb-24">
       <div class="filtros-bar">
         <div class="buscador-contenedor" style="margin:0;flex:1;min-width:180px">
@@ -97,6 +316,7 @@
       </div>
     </div>
 
+    <!-- Stats rápidos -->
     <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:14px">
       <div class="stat-card">
         <div class="stat-icono naranja">💰</div>
@@ -108,6 +328,7 @@
       </div>
     </div>
 
+    <!-- Tabla ventas -->
     <div class="card">
       <div class="tabla-contenedor">
         <table class="tabla">
@@ -136,34 +357,29 @@
       <button class="modal-cerrar" onclick="cerrarModal('modalVenta')">✕</button>
     </div>
     <input type="hidden" id="ventaId">
-
     <div class="form-grupo">
       <label class="form-label">📅 Fecha de la venta</label>
       <input type="date" class="form-input" id="ventaFecha">
       <small class="texto-suave" style="font-size:11px">Por defecto es hoy. Cambiala para cargar ventas pasadas.</small>
     </div>
-
     <div class="form-grupo">
       <label class="form-label">Código / N° de venta</label>
       <input type="text" class="form-input" id="ventaCodigo" placeholder="Ej: 1001" oninput="limpiarErrorCodigoVenta()">
       <div class="codigo-sugerido" id="ventaCodigoSugerido" onclick="usarSugeridoVenta()"></div>
       <div class="error-codigo" id="ventaErrCodigo">⚠ Este código ya existe.</div>
     </div>
-
     <div class="form-grupo">
       <label class="form-label" id="lblArtVenta">Artículo *</label>
       <select class="form-select" id="ventaArticulo" onchange="actualizarPrecio()">
         <option value="">— Seleccioná —</option>
       </select>
     </div>
-
     <div class="form-grupo" id="grupoClienteVenta">
       <label class="form-label">Cliente</label>
       <select class="form-select" id="ventaCliente">
         <option value="">— Consumidor final —</option>
       </select>
     </div>
-
     <div class="form-fila">
       <div class="form-grupo">
         <label class="form-label">Cantidad</label>
@@ -174,7 +390,6 @@
         <input type="number" class="form-input" id="ventaPrecio" placeholder="0.00" min="0" step="0.01" oninput="calcularTotal()">
       </div>
     </div>
-
     <div class="form-grupo">
       <label class="form-label">Forma de pago</label>
       <select class="form-select" id="ventaFormaPago" onchange="toggleCuotas()">
@@ -184,7 +399,6 @@
         <option value="cuenta_corriente">📋 Cuenta corriente</option>
       </select>
     </div>
-
     <div id="seccionCuotas" style="display:none">
       <div class="form-fila">
         <div class="form-grupo">
@@ -197,17 +411,14 @@
         </div>
       </div>
     </div>
-
     <div class="form-grupo">
       <label class="form-label">Pago inicial ($) <small class="texto-suave">(0 = en deuda)</small></label>
       <input type="number" class="form-input" id="ventaPagado" value="0" min="0" step="0.01" oninput="calcularTotal()">
     </div>
-
     <div class="form-grupo">
       <label class="form-label">Notas</label>
       <input type="text" class="form-input" id="ventaNotas" placeholder="Observaciones">
     </div>
-
     <div class="resumen-venta">
       <div class="resumen-row"><span>Subtotal:</span><span id="rSubtotal">$0</span></div>
       <div class="resumen-row"><span>Recargo:</span><span id="rRecargo">$0</span></div>
@@ -215,7 +426,6 @@
       <div class="resumen-row"><span>Pago inicial:</span><span id="rPagado">$0</span></div>
       <div class="resumen-row" style="color:var(--rojo)"><b>Saldo pendiente:</b><b id="rSaldo">$0</b></div>
     </div>
-
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="cerrarModal('modalVenta')">Cancelar</button>
       <button class="btn btn-acento" id="btnGuardarVenta" onclick="guardarVenta()">✓ Registrar venta</button>
@@ -252,7 +462,7 @@
       <input type="date" class="form-input" id="pagoFecha">
     </div>
     <div class="form-grupo">
-      <label class="form-label">Notas <small class="texto-suave">(opcional — ej: Cuota 2, Seña)</small></label>
+      <label class="form-label">Notas <small class="texto-suave">(opcional)</small></label>
       <input type="text" class="form-input" id="pagoNotas" placeholder="Ej: Cuota 2">
     </div>
     <div class="modal-footer">
@@ -300,7 +510,7 @@
     </div>
     <div class="form-grupo">
       <label class="form-label">Notas</label>
-      <input type="text" class="form-input" id="editVentaNotas" placeholder="Observaciones">
+      <input type="text" class="form-input" id="editVentaNotas">
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="cerrarModal('modalEditarVenta')">Cancelar</button>
@@ -312,6 +522,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/global.js?v=4.0"></script>
 <script>
+  // ══════════════════════════════════════════════════════════
+  // VARIABLES GLOBALES
+  // ══════════════════════════════════════════════════════════
   let empresaId     = null;
   let empresa       = null;
   let todasVentas   = [];
@@ -320,13 +533,20 @@
   let esAdmin       = false;
   let kiosco        = false;
   let tieneClientes = false;
-  let _detalleVentaId = null;
+  let _detalleVentaId   = null;
+  let _periodoActual    = 'hoy';
+  let _configFunciones  = {};
+  let _datosResumen     = null; // para exportar
 
   const PAGO_LABEL = {efectivo:'💵 Efectivo',transferencia:'🏦 Transf.',tarjeta:'💳 Tarjeta',cuenta_corriente:'📋 Cta.cte.'};
+  const BILLETES   = [10000,5000,2000,1000,500,200,100,50,20,10];
 
-  function hoyISO() { return new Date().toISOString().split('T')[0]; }
+  function hoyISO()        { return new Date().toISOString().split('T')[0]; }
   function fechaParaInput(f) { if(!f)return hoyISO(); return new Date(f).toISOString().split('T')[0]; }
 
+  // ══════════════════════════════════════════════════════════
+  // INIT
+  // ══════════════════════════════════════════════════════════
   (async () => {
     const sesion = await verificarSesion();
     if (!sesion) return;
@@ -336,6 +556,7 @@
     esAdmin       = sesion.esAdminGlobal || sesion.perfil.rol === 'admin_empresa';
     kiosco        = esKiosco();
     tieneClientes = empresa?.modulos_habilitados?.clientes !== false;
+    _configFunciones = empresa?.config_funciones || {};
 
     if (empresa?.modulos_habilitados?.ventas === false) {
       document.querySelector('.main-content').innerHTML = `<div class="estado-vacio" style="padding-top:80px"><div class="estado-vacio-icono">🔒</div><div class="estado-vacio-titulo">Módulo deshabilitado</div><a href="dashboard.html" class="btn btn-ghost mt-16">← Volver</a></div>`;
@@ -349,11 +570,700 @@
       document.getElementById('thClienteCol').style.display = 'none';
     }
 
+    // Mostrar botones según config empresa
+    if (_configFunciones.resumen_ventas) {
+      document.getElementById('btnResumen').style.display = 'flex';
+    }
+    if (_configFunciones.arqueo_caja) {
+      document.getElementById('btnArqueo').style.display = 'flex';
+      // Verificar si operador puede arquear
+      if (!esAdmin && _configFunciones.arqueo_quien === 'admin') {
+        document.getElementById('btnArqueo').style.display = 'none';
+      }
+    }
+
+    // Configurar turnos en arqueo
+    if (_configFunciones.arqueo_turnos === 'turno') {
+      document.getElementById('grupoTurno').style.display = 'block';
+    }
+
     await Promise.all([cargarArticulosSelect(), tieneClientes ? cargarClientesSelect() : Promise.resolve()]);
     await cargarVentas();
     iniciarFiltros();
   })();
 
+  // ══════════════════════════════════════════════════════════
+  // PANEL RESUMEN / ARQUEO — toggle
+  // ══════════════════════════════════════════════════════════
+  let _panelActivo = null;
+
+  function togglePanel(panel) {
+    const panelResumen = document.getElementById('panelResumen');
+    const panelArqueo  = document.getElementById('panelArqueo');
+
+    if (_panelActivo === panel) {
+      // Cerrar
+      panelResumen.classList.remove('activo');
+      panelArqueo.classList.remove('activo');
+      _panelActivo = null;
+      return;
+    }
+    _panelActivo = panel;
+    panelResumen.classList.toggle('activo', panel === 'resumen');
+    panelArqueo.classList.toggle('activo', panel === 'arqueo');
+
+    if (panel === 'resumen') calcularResumen();
+    if (panel === 'arqueo')  cargarDatosArqueo();
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // RESUMEN DE VENTAS
+  // ══════════════════════════════════════════════════════════
+  function selPeriodo(periodo, btn) {
+    _periodoActual = periodo;
+    document.querySelectorAll('.periodo-tab').forEach(b => b.classList.remove('activo'));
+    btn.classList.add('activo');
+    const rango = document.getElementById('periodoRango');
+    rango.classList.toggle('visible', periodo === 'rango');
+    if (periodo !== 'rango') calcularResumen();
+  }
+
+  function getRangoFechas() {
+    const hoy   = new Date();
+    let desde, hasta;
+    hasta = new Date(hoy); hasta.setHours(23,59,59,999);
+
+    switch (_periodoActual) {
+      case 'hoy':
+        desde = new Date(hoy); desde.setHours(0,0,0,0);
+        break;
+      case 'semana': {
+        const dia = hoy.getDay() || 7;
+        desde = new Date(hoy); desde.setDate(hoy.getDate() - dia + 1); desde.setHours(0,0,0,0);
+        break;
+      }
+      case 'quincena':
+        desde = new Date(hoy);
+        desde.setDate(hoy.getDate() <= 15 ? 1 : 16);
+        desde.setHours(0,0,0,0);
+        break;
+      case 'mes':
+        desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+        break;
+      case 'anio':
+        desde = new Date(hoy.getFullYear(), 0, 1);
+        break;
+      case 'rango': {
+        const d = document.getElementById('rangoDesde').value;
+        const h = document.getElementById('rangoHasta').value;
+        if (!d || !h) return null;
+        desde = new Date(d + 'T00:00:00');
+        hasta = new Date(h + 'T23:59:59');
+        break;
+      }
+    }
+    return { desde, hasta };
+  }
+
+  function labelPeriodo() {
+    const r = getRangoFechas();
+    if (!r) return '';
+    const opts = { day:'2-digit', month:'2-digit', year:'numeric' };
+    const f = d => d.toLocaleDateString('es-AR', opts);
+    if (_periodoActual === 'hoy') return `Hoy — ${f(r.desde)}`;
+    return `${f(r.desde)} al ${f(r.hasta)}`;
+  }
+
+  async function calcularResumen() {
+    const r = getRangoFechas();
+    if (!r) return;
+
+    document.getElementById('resumenContenido').innerHTML =
+      '<div class="cargando"><div class="spinner"></div><span>Calculando...</span></div>';
+
+    const { desde, hasta } = r;
+
+    // Ventas del período
+    const { data: ventas } = await sb.from('ventas').select('*,clientes(nombre)')
+      .eq('empresa_id', empresaId)
+      .gte('fecha_venta', desde.toISOString().split('T')[0])
+      .lte('fecha_venta', hasta.toISOString().split('T')[0]);
+
+    // Pagos cobrados del período (cobros de deudas)
+    const { data: pagos } = await sb.from('pagos').select('*,ventas(forma_pago,fecha_venta)')
+      .eq('empresa_id', empresaId)
+      .gte('fecha', desde.toISOString().split('T')[0])
+      .lte('fecha', hasta.toISOString().split('T')[0]);
+
+    const v = ventas || [];
+    const p = pagos  || [];
+
+    // Totales por forma de pago (ventas nuevas)
+    const tots = { efectivo:0, transferencia:0, tarjeta:0, cuenta_corriente:0 };
+    v.forEach(vt => { tots[vt.forma_pago] = (tots[vt.forma_pago]||0) + Number(vt.total||0); });
+    const totalVentas = Object.values(tots).reduce((s,x)=>s+x, 0);
+
+    // Cobros del período (pagos de deudas anteriores)
+    let totalCobros = 0;
+    const cobros = { efectivo:0, transferencia:0, tarjeta:0, cuenta_corriente:0 };
+    p.forEach(pg => {
+      const fp = pg.ventas?.forma_pago || 'efectivo';
+      cobros[fp] = (cobros[fp]||0) + Number(pg.monto||0);
+      totalCobros += Number(pg.monto||0);
+    });
+
+    // Guardar para exportar
+    _datosResumen = { ventas: v, pagos: p, tots, cobros, totalVentas, totalCobros, periodo: labelPeriodo() };
+
+    const COLS = [
+      { key:'efectivo',        label:'💵 Efectivo',        cls:'efectivo' },
+      { key:'transferencia',   label:'🏦 Transferencia',   cls:'transf'   },
+      { key:'tarjeta',         label:'💳 Tarjeta',         cls:'tarjeta'  },
+      { key:'cuenta_corriente',label:'📋 Cta. corriente',  cls:'cta'      },
+    ];
+
+    document.getElementById('resumenContenido').innerHTML = `
+      <div style="font-size:12px;font-weight:600;color:var(--texto-suave);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px">
+        📅 ${labelPeriodo()} · ${v.length} venta${v.length!==1?'s':''}
+      </div>
+
+      <div style="font-size:13px;font-weight:700;color:var(--texto);margin-bottom:8px">Ventas nuevas</div>
+      <div class="resumen-cards">
+        ${COLS.map(c=>`
+          <div class="resumen-card ${c.cls}">
+            <div class="resumen-card-label">${c.label}</div>
+            <div class="resumen-card-valor">${formatoPeso(tots[c.key])}</div>
+            <div class="resumen-card-sub">${v.filter(vt=>vt.forma_pago===c.key).length} venta${v.filter(vt=>vt.forma_pago===c.key).length!==1?'s':''}</div>
+          </div>`).join('')}
+        <div class="resumen-card gran-total">
+          <div class="resumen-card-label">TOTAL VENTAS</div>
+          <div class="resumen-card-valor" style="color:var(--azul-nav)">${formatoPeso(totalVentas)}</div>
+          <div class="resumen-card-sub">${v.length} venta${v.length!==1?'s':''} registradas</div>
+        </div>
+      </div>
+
+      <div class="seccion-cobros">
+        <div class="seccion-titulo">💳 Cobros del período <small class="texto-suave" style="font-weight:400">(pagos de deudas anteriores)</small></div>
+        <div class="resumen-cards">
+          ${COLS.map(c=>`
+            <div class="resumen-card ${c.cls}">
+              <div class="resumen-card-label">${c.label}</div>
+              <div class="resumen-card-valor">${formatoPeso(cobros[c.key])}</div>
+              <div class="resumen-card-sub">${p.filter(pg=>(pg.ventas?.forma_pago||'efectivo')===c.key).length} cobro${p.filter(pg=>(pg.ventas?.forma_pago||'efectivo')===c.key).length!==1?'s':''}</div>
+            </div>`).join('')}
+          <div class="resumen-card gran-total">
+            <div class="resumen-card-label">TOTAL COBROS</div>
+            <div class="resumen-card-valor" style="color:#0891b2">${formatoPeso(totalCobros)}</div>
+            <div class="resumen-card-sub">${p.length} cobro${p.length!==1?'s':''} registrados</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="seccion-cobros">
+        <div class="seccion-titulo">💰 Ingreso total del período</div>
+        <div style="background:var(--azul-nav);color:#fff;border-radius:var(--r-md);padding:16px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px;opacity:.85">Ventas nuevas + cobros de deudas</span>
+          <span style="font-size:24px;font-weight:800">${formatoPeso(totalVentas + totalCobros)}</span>
+        </div>
+      </div>
+
+      ${v.length ? `
+        <div class="seccion-cobros">
+          <div class="seccion-titulo">📋 Detalle de ventas</div>
+          <div class="tabla-contenedor">
+            <table class="tabla">
+              <thead><tr><th>Cód.</th><th>Fecha</th><th>Cliente</th><th>Artículo</th><th>F.Pago</th><th>Total</th><th>Saldo</th></tr></thead>
+              <tbody>
+                ${v.map(vt=>`<tr>
+                  <td><span class="badge-codigo">${vt.codigo_venta||'—'}</span></td>
+                  <td>${formatoFecha((vt.fecha_venta||vt.created_at)+'T12:00:00')}</td>
+                  <td>${vt.clientes?.nombre||'Cons. final'}</td>
+                  <td class="fw-600">${vt.articulo_nombre||'-'}</td>
+                  <td>${PAGO_LABEL[vt.forma_pago]||vt.forma_pago}</td>
+                  <td><b>${formatoPeso(vt.total)}</b></td>
+                  <td class="${Number(vt.saldo)>0?'texto-rojo':''}">${formatoPeso(vt.saldo)}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>` : ''}
+    `;
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // EXPORTAR RESUMEN — PDF
+  // ══════════════════════════════════════════════════════════
+  function exportarResumenPDF() {
+    if (!_datosResumen) { mostrarAlerta('Generá el resumen primero', 'info'); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const W = 210; let y = 15;
+    const nombreEmpresa = empresa?.nombre || 'Stockia';
+
+    // ── Encabezado con logo ───────────────────────────────
+    doc.setFillColor(30, 58, 138);
+    doc.rect(0, 0, W, 28, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(20);
+    doc.text('Stockia', 14, 12);
+    doc.setFontSize(9);
+    doc.setFont('helvetica','normal');
+    doc.text('Sistema de gestión de inventario', 14, 18);
+    doc.setFontSize(11);
+    doc.setFont('helvetica','bold');
+    doc.text(nombreEmpresa, W-14, 12, {align:'right'});
+    doc.setFontSize(8);
+    doc.setFont('helvetica','normal');
+    doc.text('Resumen de Ventas', W-14, 18, {align:'right'});
+    y = 36;
+
+    // ── Período ───────────────────────────────────────────
+    doc.setTextColor(30,58,138);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(13);
+    doc.text(_datosResumen.periodo, 14, y); y += 6;
+    doc.setTextColor(100,100,100);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(9);
+    doc.text(`Generado: ${new Date().toLocaleString('es-AR')}`, 14, y); y += 10;
+
+    // ── Totales ventas ────────────────────────────────────
+    doc.setTextColor(30,30,30);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(11);
+    doc.text('VENTAS NUEVAS', 14, y); y += 6;
+
+    const filasPago = [
+      ['💵 Efectivo',      formatoPeso(_datosResumen.tots.efectivo)],
+      ['🏦 Transferencia', formatoPeso(_datosResumen.tots.transferencia)],
+      ['💳 Tarjeta',       formatoPeso(_datosResumen.tots.tarjeta)],
+      ['📋 Cta. corriente',formatoPeso(_datosResumen.tots.cuenta_corriente)],
+      ['TOTAL VENTAS',     formatoPeso(_datosResumen.totalVentas)],
+    ];
+    filasPago.forEach(([label, valor], i) => {
+      const esTotal = i === filasPago.length - 1;
+      if (esTotal) { doc.setFillColor(30,58,138); doc.rect(14,y-4,W-28,7,'F'); doc.setTextColor(255,255,255); }
+      else          { doc.setFillColor(i%2?248:255,i%2?250:255,i%2?255:255); doc.rect(14,y-4,W-28,7,'F'); doc.setTextColor(30,30,30); }
+      doc.setFont('helvetica', esTotal?'bold':'normal');
+      doc.setFontSize(9);
+      doc.text(label, 18, y);
+      doc.text(valor, W-18, y, {align:'right'});
+      y += 7;
+    });
+    y += 6;
+
+    // ── Cobros ────────────────────────────────────────────
+    doc.setTextColor(30,30,30);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(11);
+    doc.text('COBROS DEL PERÍODO (deudas anteriores)', 14, y); y += 6;
+
+    const filasCobros = [
+      ['💵 Efectivo',      formatoPeso(_datosResumen.cobros.efectivo)],
+      ['🏦 Transferencia', formatoPeso(_datosResumen.cobros.transferencia)],
+      ['💳 Tarjeta',       formatoPeso(_datosResumen.cobros.tarjeta)],
+      ['📋 Cta. corriente',formatoPeso(_datosResumen.cobros.cuenta_corriente)],
+      ['TOTAL COBROS',     formatoPeso(_datosResumen.totalCobros)],
+    ];
+    filasCobros.forEach(([label, valor], i) => {
+      const esTotal = i === filasCobros.length - 1;
+      if (esTotal) { doc.setFillColor(8,145,178); doc.rect(14,y-4,W-28,7,'F'); doc.setTextColor(255,255,255); }
+      else          { doc.setFillColor(i%2?248:255,i%2?250:255,i%2?255:255); doc.rect(14,y-4,W-28,7,'F'); doc.setTextColor(30,30,30); }
+      doc.setFont('helvetica', esTotal?'bold':'normal');
+      doc.setFontSize(9);
+      doc.text(label, 18, y);
+      doc.text(valor, W-18, y, {align:'right'});
+      y += 7;
+    });
+    y += 6;
+
+    // ── Ingreso total ─────────────────────────────────────
+    doc.setFillColor(16,185,129);
+    doc.rect(14, y-4, W-28, 10, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(12);
+    doc.text('INGRESO TOTAL DEL PERÍODO', 18, y+2);
+    doc.text(formatoPeso(_datosResumen.totalVentas + _datosResumen.totalCobros), W-18, y+2, {align:'right'});
+    y += 16;
+
+    // ── Detalle de ventas ─────────────────────────────────
+    if (_datosResumen.ventas.length && y < 220) {
+      doc.setTextColor(30,30,30);
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(10);
+      doc.text('DETALLE DE VENTAS', 14, y); y += 6;
+
+      // Cabecera tabla
+      doc.setFillColor(30,58,138);
+      doc.rect(14,y-4,W-28,7,'F');
+      doc.setTextColor(255,255,255);
+      doc.setFontSize(8);
+      ['Cód.','Fecha','Cliente','Artículo','F.Pago','Total','Saldo'].forEach((h,i) => {
+        const xs = [18,35,60,100,135,162,185];
+        doc.text(h, xs[i], y);
+      });
+      y += 7;
+
+      _datosResumen.ventas.forEach((vt,i) => {
+        if (y > 270) { doc.addPage(); y = 20; }
+        doc.setFillColor(i%2?248:255,i%2?250:255,i%2?255:255);
+        doc.rect(14,y-4,W-28,7,'F');
+        doc.setTextColor(30,30,30);
+        doc.setFont('helvetica','normal');
+        doc.setFontSize(7);
+        const xs = [18,35,60,100,135,162,185];
+        const row = [
+          (vt.codigo_venta||'—').substring(0,8),
+          formatoFecha((vt.fecha_venta||vt.created_at)+'T12:00:00'),
+          (vt.clientes?.nombre||'Cons.final').substring(0,18),
+          (vt.articulo_nombre||'-').substring(0,20),
+          (PAGO_LABEL[vt.forma_pago]||vt.forma_pago).replace(/[^\w\s]/g,'').trim().substring(0,10),
+          formatoPeso(vt.total).substring(0,12),
+          formatoPeso(vt.saldo).substring(0,12),
+        ];
+        row.forEach((v,j) => doc.text(v, xs[j], y));
+        y += 7;
+      });
+    }
+
+    // ── Pie de página ──────────────────────────────────────
+    const totalPags = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPags; i++) {
+      doc.setPage(i);
+      doc.setFontSize(7); doc.setTextColor(150,150,150);
+      doc.text(`Stockia · ${nombreEmpresa} · Pág. ${i}/${totalPags}`, W/2, 290, {align:'center'});
+    }
+
+    doc.save(`stockia-resumen-${hoyISO()}.pdf`);
+    mostrarAlerta('PDF generado ✓', 'exito');
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // EXPORTAR RESUMEN — EXCEL
+  // ══════════════════════════════════════════════════════════
+  function exportarResumenExcel() {
+    if (!_datosResumen) { mostrarAlerta('Generá el resumen primero', 'info'); return; }
+    const wb = XLSX.utils.book_new();
+    const nombreEmpresa = empresa?.nombre || 'Stockia';
+
+    // Hoja 1: Resumen
+    const resumenData = [
+      [`Stockia · ${nombreEmpresa}`],
+      [`Resumen de ventas: ${_datosResumen.periodo}`],
+      [`Generado: ${new Date().toLocaleString('es-AR')}`],
+      [],
+      ['VENTAS NUEVAS'],
+      ['Forma de pago','Total'],
+      ['Efectivo',       _datosResumen.tots.efectivo],
+      ['Transferencia',  _datosResumen.tots.transferencia],
+      ['Tarjeta',        _datosResumen.tots.tarjeta],
+      ['Cuenta corriente',_datosResumen.tots.cuenta_corriente],
+      ['TOTAL VENTAS',   _datosResumen.totalVentas],
+      [],
+      ['COBROS DEL PERÍODO'],
+      ['Forma de pago','Total'],
+      ['Efectivo',       _datosResumen.cobros.efectivo],
+      ['Transferencia',  _datosResumen.cobros.transferencia],
+      ['Tarjeta',        _datosResumen.cobros.tarjeta],
+      ['Cuenta corriente',_datosResumen.cobros.cuenta_corriente],
+      ['TOTAL COBROS',   _datosResumen.totalCobros],
+      [],
+      ['INGRESO TOTAL DEL PERÍODO', _datosResumen.totalVentas + _datosResumen.totalCobros],
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumenData), 'Resumen');
+
+    // Hoja 2: Detalle ventas
+    if (_datosResumen.ventas.length) {
+      const detData = [
+        ['Código','Fecha','Cliente','Artículo','Forma Pago','Total','Pagado','Saldo','Estado'],
+        ..._datosResumen.ventas.map(v=>[
+          v.codigo_venta||'',
+          v.fecha_venta||v.created_at?.split('T')[0],
+          v.clientes?.nombre||'Consumidor final',
+          v.articulo_nombre||'',
+          v.forma_pago,
+          Number(v.total||0),
+          Number(v.pagado||0),
+          Number(v.saldo||0),
+          v.estado,
+        ])
+      ];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detData), 'Ventas');
+    }
+
+    // Hoja 3: Cobros
+    if (_datosResumen.pagos.length) {
+      const cobData = [
+        ['Fecha cobro','Monto','Notas'],
+        ..._datosResumen.pagos.map(p=>[p.fecha, Number(p.monto||0), p.notas||''])
+      ];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cobData), 'Cobros');
+    }
+
+    XLSX.writeFile(wb, `stockia-resumen-${hoyISO()}.xlsx`);
+    mostrarAlerta('Excel generado ✓', 'exito');
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // ARQUEO DE CAJA
+  // ══════════════════════════════════════════════════════════
+  async function cargarDatosArqueo() {
+    document.getElementById('arqueoSistema').innerHTML =
+      '<div class="cargando"><div class="spinner"></div><span>Calculando...</span></div>';
+
+    const turno   = document.getElementById('arqueoTurno')?.value || 'diario';
+    const hoy     = hoyISO();
+    let desdeHora = '00:00:00', hastaHora = '23:59:59';
+    if (turno === 'mañana') hastaHora = '13:00:00';
+    if (turno === 'tarde')  desdeHora = '13:00:01';
+
+    const desde = `${hoy}T${desdeHora}`;
+    const hasta  = `${hoy}T${hastaHora}`;
+
+    // Ventas en efectivo del turno
+    const { data: ventas } = await sb.from('ventas').select('total,forma_pago,estado,pagado,saldo,codigo_venta,articulo_nombre')
+      .eq('empresa_id', empresaId)
+      .eq('fecha_venta', hoy);
+
+    // Cobros en efectivo del turno (pagos de deudas)
+    const { data: cobros } = await sb.from('pagos').select('monto,fecha,notas,ventas(forma_pago)')
+      .eq('empresa_id', empresaId)
+      .eq('fecha', hoy);
+
+    const v = ventas || [];
+    const c = cobros || [];
+
+    const efectivoVentas = v.filter(vt=>vt.forma_pago==='efectivo').reduce((s,vt)=>s+Number(vt.total||0),0);
+    const transfVentas   = v.filter(vt=>vt.forma_pago==='transferencia').reduce((s,vt)=>s+Number(vt.total||0),0);
+    const tarjetaVentas  = v.filter(vt=>vt.forma_pago==='tarjeta').reduce((s,vt)=>s+Number(vt.total||0),0);
+    const ctaVentas      = v.filter(vt=>vt.forma_pago==='cuenta_corriente').reduce((s,vt)=>s+Number(vt.total||0),0);
+    const efectivoCobros = c.filter(p=>(p.ventas?.forma_pago||'efectivo')==='efectivo').reduce((s,p)=>s+Number(p.monto||0),0);
+    const totalEfectivoSistema = efectivoVentas + efectivoCobros;
+
+    document.getElementById('arqueoSistema').innerHTML = `
+      <div class="arqueo-seccion">
+        <div style="font-size:12px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">
+          📅 ${new Date().toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'long'})}
+          ${turno!=='diario'?` · Turno ${turno}`:''}
+        </div>
+
+        <div class="resumen-cards">
+          <div class="resumen-card efectivo">
+            <div class="resumen-card-label">💵 Efectivo (ventas)</div>
+            <div class="resumen-card-valor">${formatoPeso(efectivoVentas)}</div>
+            <div class="resumen-card-sub">${v.filter(vt=>vt.forma_pago==='efectivo').length} ventas</div>
+          </div>
+          <div class="resumen-card transf">
+            <div class="resumen-card-label">🏦 Transferencia</div>
+            <div class="resumen-card-valor">${formatoPeso(transfVentas)}</div>
+          </div>
+          <div class="resumen-card tarjeta">
+            <div class="resumen-card-label">💳 Tarjeta</div>
+            <div class="resumen-card-valor">${formatoPeso(tarjetaVentas)}</div>
+          </div>
+          <div class="resumen-card cta">
+            <div class="resumen-card-label">📋 Cta. corriente</div>
+            <div class="resumen-card-valor">${formatoPeso(ctaVentas)}</div>
+          </div>
+          <div class="resumen-card cobros">
+            <div class="resumen-card-label">💳 Cobros efectivo</div>
+            <div class="resumen-card-valor">${formatoPeso(efectivoCobros)}</div>
+            <div class="resumen-card-sub">${c.length} cobro${c.length!==1?'s':''}</div>
+          </div>
+          <div class="resumen-card gran-total">
+            <div class="resumen-card-label">💵 EFECTIVO TOTAL EN CAJA (sistema)</div>
+            <div class="resumen-card-valor">${formatoPeso(totalEfectivoSistema)}</div>
+            <div class="resumen-card-sub">Ventas + cobros en efectivo</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Sección conteo físico
+    const registraFisico = _configFunciones.arqueo_registra_fisico !== false;
+    const secFisico = document.getElementById('arqueoFisicoSection');
+    secFisico.style.display = registraFisico ? 'block' : 'none';
+
+    if (registraFisico) {
+      // Generar grilla de billetes
+      const billetesGrid = document.getElementById('billetesGrid');
+      billetesGrid.innerHTML = BILLETES.map(b => `
+        <div class="billete-item">
+          <div class="billete-label">$ ${b >= 1000 ? (b/1000)+'K' : b}</div>
+          <input type="number" class="billete-input" id="bill_${b}" value="0" min="0"
+            oninput="actualizarConteo()" placeholder="0">
+          <div class="billete-subtotal" id="sub_${b}">= $0</div>
+        </div>
+      `).join('');
+
+      // Guardar total sistema para comparar
+      document.getElementById('arqueoFisicoSection').dataset.totalSistema = totalEfectivoSistema;
+      actualizarConteo();
+    }
+
+    // Historial
+    await cargarHistorialArqueos();
+  }
+
+  function actualizarConteo() {
+    let totalContado = 0;
+    BILLETES.forEach(b => {
+      const cant = parseInt(document.getElementById('bill_'+b)?.value)||0;
+      const sub  = cant * b;
+      totalContado += sub;
+      const el = document.getElementById('sub_'+b);
+      if (el) el.textContent = `= ${formatoPeso(sub)}`;
+    });
+
+    const totalSistema = parseFloat(document.getElementById('arqueoFisicoSection').dataset.totalSistema||0);
+    const diferencia   = totalContado - totalSistema;
+    const esOk         = Math.abs(diferencia) < 1;
+
+    document.getElementById('arqueoComparacion').innerHTML = `
+      <div class="arqueo-box sistema">
+        <div class="arqueo-box-label">Sistema dice</div>
+        <div class="arqueo-box-valor" style="color:var(--azul-accion)">${formatoPeso(totalSistema)}</div>
+      </div>
+      <div class="arqueo-box contado">
+        <div class="arqueo-box-label">Contado físico</div>
+        <div class="arqueo-box-valor" style="color:var(--verde)">${formatoPeso(totalContado)}</div>
+      </div>
+      <div class="arqueo-box ${esOk?'diferencia-ok':'diferencia-mal'}">
+        <div class="arqueo-box-label">${esOk?'✓ Cierra':'⚠ Diferencia'}</div>
+        <div class="arqueo-box-valor" style="color:${esOk?'var(--verde)':'var(--rojo)'}">
+          ${diferencia>=0?'+':''}${formatoPeso(diferencia)}
+        </div>
+        <div style="font-size:11px;color:var(--texto-suave);margin-top:2px">
+          ${esOk?'Todo cuadra':'Revisá el conteo'}
+        </div>
+      </div>
+    `;
+  }
+
+  async function guardarArqueo() {
+    const totalSistema = parseFloat(document.getElementById('arqueoFisicoSection').dataset.totalSistema||0);
+    let totalContado = 0;
+    const detalleBilletes = {};
+    BILLETES.forEach(b => {
+      const cant = parseInt(document.getElementById('bill_'+b)?.value)||0;
+      if (cant > 0) detalleBilletes[b] = cant;
+      totalContado += cant * b;
+    });
+
+    const hoy   = hoyISO();
+    const turno = document.getElementById('arqueoTurno')?.value || 'diario';
+    const notas = document.getElementById('arqueoNotas')?.value.trim() || null;
+
+    // Calcular todos los totales para guardar
+    const { data: ventas } = await sb.from('ventas').select('total,forma_pago')
+      .eq('empresa_id', empresaId).eq('fecha_venta', hoy);
+    const { data: cobros } = await sb.from('pagos').select('monto,ventas(forma_pago)')
+      .eq('empresa_id', empresaId).eq('fecha', hoy);
+
+    const v = ventas||[], c = cobros||[];
+    const tots = {
+      efectivo:    v.filter(x=>x.forma_pago==='efectivo').reduce((s,x)=>s+Number(x.total),0),
+      transferencia: v.filter(x=>x.forma_pago==='transferencia').reduce((s,x)=>s+Number(x.total),0),
+      tarjeta:     v.filter(x=>x.forma_pago==='tarjeta').reduce((s,x)=>s+Number(x.total),0),
+      cta:         v.filter(x=>x.forma_pago==='cuenta_corriente').reduce((s,x)=>s+Number(x.total),0),
+    };
+    const totalCobros = c.reduce((s,p)=>s+Number(p.monto),0);
+
+    const { error } = await sb.from('arqueos').insert({
+      empresa_id:              empresaId,
+      turno,
+      fecha:                   hoy,
+      periodo_desde:           `${hoy}T00:00:00`,
+      periodo_hasta:           `${hoy}T23:59:59`,
+      total_efectivo_sistema:  totalSistema,
+      total_transferencia:     tots.transferencia,
+      total_tarjeta:           tots.tarjeta,
+      total_cuenta_corriente:  tots.cta,
+      total_ventas_sistema:    v.reduce((s,x)=>s+Number(x.total),0),
+      total_cobros_sistema:    totalCobros,
+      efectivo_contado:        totalContado,
+      diferencia:              totalContado - totalSistema,
+      detalle_billetes:        detalleBilletes,
+      notas,
+    });
+
+    if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
+    mostrarAlerta('Arqueo guardado ✓', 'exito');
+    BILLETES.forEach(b => { const el = document.getElementById('bill_'+b); if(el) el.value = '0'; });
+    if (document.getElementById('arqueoNotas')) document.getElementById('arqueoNotas').value = '';
+    actualizarConteo();
+    await cargarHistorialArqueos();
+  }
+
+  async function cargarHistorialArqueos() {
+    const { data } = await sb.from('arqueos').select('*')
+      .eq('empresa_id', empresaId)
+      .order('created_at', {ascending:false})
+      .limit(5);
+
+    const hist = document.getElementById('historialArqueos');
+    const lista = document.getElementById('listaArqueos');
+    if (!data?.length) { hist.style.display='none'; return; }
+    hist.style.display = 'block';
+
+    lista.innerHTML = data.map(a => {
+      const dif = Number(a.diferencia||0);
+      const esCuadrado = Math.abs(dif) < 1;
+      return `
+        <div class="arqueo-historial-item">
+          <div>
+            <div style="font-size:13px;font-weight:700">${formatoFecha(a.fecha+'T12:00:00')} · ${a.turno}</div>
+            <div style="font-size:11px;color:var(--texto-suave)">
+              Sistema: ${formatoPeso(a.total_efectivo_sistema)} · Contado: ${formatoPeso(a.efectivo_contado)}
+              ${a.notas?` · ${a.notas}`:''}
+            </div>
+          </div>
+          <span class="badge ${esCuadrado?'badge-verde':'badge-rojo'}">
+            ${dif>=0?'+':''}${formatoPeso(dif)}
+          </span>
+        </div>`;
+    }).join('');
+  }
+
+  async function exportarArqueoPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const W = 210; let y = 15;
+    const nombreEmpresa = empresa?.nombre || 'Stockia';
+
+    doc.setFillColor(16,185,129);
+    doc.rect(0,0,W,28,'F');
+    doc.setTextColor(255,255,255);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(20);
+    doc.text('Stockia', 14, 12);
+    doc.setFontSize(9);
+    doc.setFont('helvetica','normal');
+    doc.text('Sistema de gestión de inventario', 14, 18);
+    doc.setFontSize(11);
+    doc.setFont('helvetica','bold');
+    doc.text(nombreEmpresa, W-14, 12, {align:'right'});
+    doc.setFontSize(8);
+    doc.text('Arqueo de Caja', W-14, 18, {align:'right'});
+    y = 36;
+
+    doc.setTextColor(30,30,30);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(13);
+    doc.text(`Arqueo — ${new Date().toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})}`, 14, y); y += 12;
+
+    doc.setFontSize(9);
+    doc.text(`Generado: ${new Date().toLocaleString('es-AR')}`, 14, y); y += 10;
+
+    doc.save(`stockia-arqueo-${hoyISO()}.pdf`);
+    mostrarAlerta('PDF de arqueo generado ✓', 'exito');
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // VENTAS — todo igual que v4.1
+  // ══════════════════════════════════════════════════════════
   async function cargarArticulosSelect() {
     const {data} = await sb.from('articulos').select('id,nombre,precio,stock').eq('empresa_id',empresaId).eq('activo',true).order('nombre');
     articulos = data||[];
@@ -401,13 +1311,10 @@
 
   function renderTabla(lista) {
     const tbody=document.getElementById('tablaVentas');
-    if(!lista.length){
-      tbody.innerHTML=`<tr><td colspan="8"><div class="estado-vacio"><div class="estado-vacio-icono">💰</div><div class="estado-vacio-titulo">Sin ventas</div><button class="btn btn-acento" onclick="abrirNuevaVenta()">➕ Nueva Venta</button></div></td></tr>`;
-      return;
-    }
+    if(!lista.length){ tbody.innerHTML=`<tr><td colspan="8"><div class="estado-vacio"><div class="estado-vacio-icono">💰</div><div class="estado-vacio-titulo">Sin ventas</div><button class="btn btn-acento" onclick="abrirNuevaVenta()">➕ Nueva Venta</button></div></td></tr>`; return; }
     tbody.innerHTML=lista.map(v=>{
       const clienteCol=(kiosco&&!tieneClientes)?'':
-        `<td>${v.clientes?`${v.clientes.nombre}${v.clientes.codigo?` <span class="badge-codigo">${v.clientes.codigo}</span>`:'`'}`:'<span class="texto-suave">Cons. final</span>'}</td>`;
+        `<td>${v.clientes?`${v.clientes.nombre}${v.clientes.codigo?` <span class="badge-codigo">${v.clientes.codigo}</span>`:''}`:'<span class="texto-suave">Cons. final</span>'}</td>`;
       const fechaMostrar=v.fecha_venta?formatoFecha(v.fecha_venta+'T12:00:00'):formatoFecha(v.created_at);
       return `<tr>
         <td><span class="badge-codigo">${v.codigo_venta||'—'}</span></td>
@@ -427,7 +1334,6 @@
     }).join('');
   }
 
-  // ── Nueva venta ───────────────────────────────────────────────
   async function abrirNuevaVenta() {
     document.getElementById('ventaId').value='';
     document.getElementById('ventaFecha').value=hoyISO();
@@ -458,22 +1364,16 @@
     if(precio) document.getElementById('ventaPrecio').value=precio;
     calcularTotal();
   }
-
   function toggleCuotas() {
-    document.getElementById('seccionCuotas').style.display=
-      document.getElementById('ventaFormaPago').value==='cuenta_corriente'?'block':'none';
+    document.getElementById('seccionCuotas').style.display=document.getElementById('ventaFormaPago').value==='cuenta_corriente'?'block':'none';
     calcularTotal();
   }
-
   function calcularTotal() {
     const cant=parseFloat(document.getElementById('ventaCantidad').value)||1;
     const precio=parseFloat(document.getElementById('ventaPrecio').value)||0;
     const recargo=parseFloat(document.getElementById('ventaRecargo').value)||0;
     const pagado=parseFloat(document.getElementById('ventaPagado').value)||0;
-    const sub=cant*precio;
-    const monRec=sub*(recargo/100);
-    const total=sub+monRec;
-    const saldo=Math.max(0,total-pagado);
+    const sub=cant*precio, monRec=sub*(recargo/100), total=sub+monRec, saldo=Math.max(0,total-pagado);
     document.getElementById('rSubtotal').textContent=formatoPeso(sub);
     document.getElementById('rRecargo').textContent=formatoPeso(monRec);
     document.getElementById('rTotal').textContent=formatoPeso(total);
@@ -493,54 +1393,34 @@
     const fp=document.getElementById('ventaFormaPago').value;
     const cliId=document.getElementById('ventaCliente').value||null;
     const notas=document.getElementById('ventaNotas').value.trim()||null;
-
     if(!artId){mostrarAlerta('Seleccioná un artículo','error');return;}
     if(!precio){mostrarAlerta('El precio no puede ser 0','error');return;}
-    if(codigo){
-      const unico=await codigoEsUnico('ventas','codigo_venta',codigo,empresaId,null);
-      if(!unico){document.getElementById('ventaErrCodigo').classList.add('visible');return;}
-    }
-
+    if(codigo){const unico=await codigoEsUnico('ventas','codigo_venta',codigo,empresaId,null);if(!unico){document.getElementById('ventaErrCodigo').classList.add('visible');return;}}
     const artSel=articulos.find(a=>a.id===artId);
-    const sub=cant*precio;
-    const monRec=sub*(recargo/100);
-    const total=sub+monRec;
-    const saldo=Math.max(0,total-pagado);
+    const sub=cant*precio,monRec=sub*(recargo/100),total=sub+monRec,saldo=Math.max(0,total-pagado);
     const estado=saldo===0?'pagado':(pagado>0?'parcial':'pendiente');
-
     const btn=document.getElementById('btnGuardarVenta');
-    btn.disabled=true; btn.textContent='Guardando...';
+    btn.disabled=true;btn.textContent='Guardando...';
     try {
-      const {data:vd,error}=await sb.from('ventas').insert({
-        empresa_id:empresaId, cliente_id:cliId,
-        articulo_id:artId, articulo_nombre:artSel?.nombre||null,
-        cantidad:cant, precio_unitario:precio,
-        total, forma_pago:fp, estado, pagado, saldo,
-        es_cuotas:fp==='cuenta_corriente'&&cuotas>1,
-        cantidad_cuotas:cuotas, recargo_pct:recargo,
-        codigo_venta:codigo, notas, fecha_venta:fecha,
+      const{data:vd,error}=await sb.from('ventas').insert({
+        empresa_id:empresaId,cliente_id:cliId,articulo_id:artId,articulo_nombre:artSel?.nombre||null,
+        cantidad:cant,precio_unitario:precio,total,forma_pago:fp,estado,pagado,saldo,
+        es_cuotas:fp==='cuenta_corriente'&&cuotas>1,cantidad_cuotas:cuotas,recargo_pct:recargo,
+        codigo_venta:codigo,notas,fecha_venta:fecha,
       }).select('id').single();
-      if(error) throw error;
-
-      // Registrar pago inicial en tabla pagos
-      if(pagado>0 && vd?.id) {
-        await sb.from('pagos').insert({
-          empresa_id:empresaId, venta_id:vd.id,
-          monto:pagado, fecha, notas:'Pago inicial',
-        });
+      if(error)throw error;
+      if(pagado>0&&vd?.id){
+        await sb.from('pagos').insert({empresa_id:empresaId,venta_id:vd.id,monto:pagado,fecha,notas:'Pago inicial'});
       }
-
       if(artSel) await sb.from('articulos').update({stock:Math.max(0,(artSel.stock||0)-cant)}).eq('id',artId);
-
       mostrarAlerta('Venta registrada ✓','exito');
       cerrarModal('modalVenta');
       await cargarVentas();
       await cargarArticulosSelect();
-    } catch(err){mostrarAlerta('Error: '+err.message,'error');}
+    }catch(err){mostrarAlerta('Error: '+err.message,'error');}
     finally{btn.disabled=false;btn.textContent='✓ Registrar venta';}
   }
 
-  // ── Detalle + historial pagos ─────────────────────────────────
   async function abrirDetalleVenta(ventaId) {
     _detalleVentaId=ventaId;
     document.getElementById('detalleVentaContenido').innerHTML='<div class="cargando"><div class="spinner"></div></div>';
@@ -549,9 +1429,9 @@
   }
 
   async function renderDetalleVenta(ventaId) {
-    const v=todasVentas.find(x=>x.id===ventaId); if(!v)return;
+    const v=todasVentas.find(x=>x.id===ventaId);if(!v)return;
     document.getElementById('detalleVentaTitulo').textContent=`📋 Venta${v.codigo_venta?' #'+v.codigo_venta:''}`;
-    const {data:pagosData}=await sb.from('pagos').select('*').eq('venta_id',ventaId).order('fecha').order('created_at');
+    const{data:pagosData}=await sb.from('pagos').select('*').eq('venta_id',ventaId).order('fecha').order('created_at');
     const fechaVenta=v.fecha_venta?formatoFecha(v.fecha_venta+'T12:00:00'):formatoFecha(v.created_at);
     document.getElementById('detalleVentaContenido').innerHTML=`
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
@@ -570,7 +1450,7 @@
       </div>
       <div id="listaPagos">
         ${!pagosData?.length
-          ?`<p class="texto-suave" style="font-size:13px;padding:8px 0">${Number(v.pagado)>0?`<span style="color:var(--naranja)">⚠ ${formatoPeso(v.pagado)} pagados antes de esta versión — sin detalle individual.</span>`:'Sin pagos registrados.'}</p>`
+          ?`<p class="texto-suave" style="font-size:13px;padding:8px 0">${Number(v.pagado)>0?`<span style="color:var(--naranja)">⚠ ${formatoPeso(v.pagado)} pagados antes de esta versión — sin detalle.</span>`:'Sin pagos registrados.'}</p>`
           :pagosData.map(p=>`
             <div class="pago-item" id="pago-${p.id}">
               <div class="pago-item-info">
@@ -583,7 +1463,6 @@
       </div>`;
   }
 
-  // ── Pago ─────────────────────────────────────────────────────
   function abrirPago(ventaId,saldo) {
     document.getElementById('pagoVentaId').value=ventaId;
     document.getElementById('pagoMonto').value='';
@@ -592,11 +1471,7 @@
     document.getElementById('pagoInfo').textContent=`Saldo actual: ${formatoPeso(saldo)}`;
     abrirModal('modalPago');
   }
-
-  function abrirPagoDesdeDetalle(ventaId,saldo) {
-    cerrarModal('modalDetalleVenta');
-    abrirPago(ventaId,saldo);
-  }
+  function abrirPagoDesdeDetalle(ventaId,saldo){cerrarModal('modalDetalleVenta');abrirPago(ventaId,saldo);}
 
   async function confirmarPago() {
     const ventaId=document.getElementById('pagoVentaId').value;
@@ -604,13 +1479,10 @@
     const fecha=document.getElementById('pagoFecha').value||hoyISO();
     const notas=document.getElementById('pagoNotas').value.trim()||null;
     if(monto<=0){mostrarAlerta('Ingresá un monto válido','error');return;}
-
-    const {error:ep}=await sb.from('pagos').insert({empresa_id:empresaId,venta_id:ventaId,monto,fecha,notas});
+    const{error:ep}=await sb.from('pagos').insert({empresa_id:empresaId,venta_id:ventaId,monto,fecha,notas});
     if(ep){mostrarAlerta('Error: '+ep.message,'error');return;}
-
-    const {error:er}=await sb.rpc('recalcular_venta',{p_venta_id:ventaId});
+    const{error:er}=await sb.rpc('recalcular_venta',{p_venta_id:ventaId});
     if(er){mostrarAlerta('Error al recalcular: '+er.message,'error');return;}
-
     mostrarAlerta('Pago registrado ✓','exito');
     cerrarModal('modalPago');
     await cargarVentas();
@@ -619,17 +1491,16 @@
 
   async function eliminarPago(pagoId,ventaId,monto) {
     if(!confirm(`¿Eliminar el pago de ${formatoPeso(monto)}?\nEl saldo se recalcula automáticamente.`))return;
-    const {error}=await sb.from('pagos').delete().eq('id',pagoId);
+    const{error}=await sb.from('pagos').delete().eq('id',pagoId);
     if(error){mostrarAlerta('Error: '+error.message,'error');return;}
     await sb.rpc('recalcular_venta',{p_venta_id:ventaId});
-    mostrarAlerta('Pago eliminado. Saldo recalculado ✓','exito');
+    mostrarAlerta('Pago eliminado ✓','exito');
     await cargarVentas();
     await renderDetalleVenta(ventaId);
   }
 
-  // ── Editar venta ──────────────────────────────────────────────
   function abrirEditarVenta(ventaId) {
-    const v=todasVentas.find(x=>x.id===ventaId); if(!v)return;
+    const v=todasVentas.find(x=>x.id===ventaId);if(!v)return;
     document.getElementById('editVentaId').value=ventaId;
     document.getElementById('editVentaCodigo').value=v.codigo_venta||'';
     document.getElementById('editVentaFecha').value=fechaParaInput(v.fecha_venta||v.created_at);
@@ -649,45 +1520,24 @@
     const precio=parseFloat(document.getElementById('editVentaPrecio').value)||0;
     const fp=document.getElementById('editVentaFormaPago').value;
     const notas=document.getElementById('editVentaNotas').value.trim()||null;
-
-    if(codigo){
-      const unico=await codigoEsUnico('ventas','codigo_venta',codigo,empresaId,ventaId);
-      if(!unico){document.getElementById('editVentaErrCodigo').classList.add('visible');return;}
-    }
-
+    if(codigo){const unico=await codigoEsUnico('ventas','codigo_venta',codigo,empresaId,ventaId);if(!unico){document.getElementById('editVentaErrCodigo').classList.add('visible');return;}}
     const v=todasVentas.find(x=>x.id===ventaId);
-    const recargo=v?.recargo_pct||0;
-    const sub=cant*precio;
-    const total=sub+sub*(recargo/100);
-
-    const {error}=await sb.from('ventas').update({
-      codigo_venta:codigo, fecha_venta:fecha,
-      cantidad:cant, precio_unitario:precio, total,
-      forma_pago:fp, notas,
-    }).eq('id',ventaId);
+    const sub=cant*precio,total=sub+sub*((v?.recargo_pct||0)/100);
+    const{error}=await sb.from('ventas').update({codigo_venta:codigo,fecha_venta:fecha,cantidad:cant,precio_unitario:precio,total,forma_pago:fp,notas}).eq('id',ventaId);
     if(error){mostrarAlerta('Error: '+error.message,'error');return;}
-
     await sb.rpc('recalcular_venta',{p_venta_id:ventaId});
     mostrarAlerta('Venta actualizada ✓','exito');
     cerrarModal('modalEditarVenta');
     await cargarVentas();
   }
 
-  // ── Eliminar venta (devolución) ───────────────────────────────
   async function confirmarEliminarVenta(ventaId,nombreArticulo) {
     const v=todasVentas.find(x=>x.id===ventaId);
-    if(!confirm(`¿Eliminar la venta de "${nombreArticulo}"?\n\nSe eliminarán los pagos asociados y se devolverá el stock.\n\nEsta acción no se puede deshacer.`))return;
-
+    if(!confirm(`¿Eliminar la venta de "${nombreArticulo}"?\n\nSe eliminarán los pagos y se devolverá el stock.\n\nEsta acción no se puede deshacer.`))return;
     await sb.from('pagos').delete().eq('venta_id',ventaId);
-
-    if(v?.articulo_id && v?.cantidad){
-      const art=articulos.find(a=>a.id===v.articulo_id);
-      if(art) await sb.from('articulos').update({stock:(art.stock||0)+v.cantidad}).eq('id',v.articulo_id);
-    }
-
-    const {error}=await sb.from('ventas').delete().eq('id',ventaId);
+    if(v?.articulo_id&&v?.cantidad){const art=articulos.find(a=>a.id===v.articulo_id);if(art) await sb.from('articulos').update({stock:(art.stock||0)+v.cantidad}).eq('id',v.articulo_id);}
+    const{error}=await sb.from('ventas').delete().eq('id',ventaId);
     if(error){mostrarAlerta('Error: '+error.message,'error');return;}
-
     mostrarAlerta('Venta eliminada. Stock restaurado ✓','exito');
     await cargarVentas();
     await cargarArticulosSelect();
