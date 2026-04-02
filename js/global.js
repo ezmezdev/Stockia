@@ -93,7 +93,12 @@ function construirNav() {
   ];
 
   const esAdminCon = esAdminGlobal ? !!empresa : perfil.rol === 'admin_empresa';
-  if (esAdminCon)    items.push({ href: 'admin-empresa.html', icono: '⚙️', label: 'Config',      siempre: true });
+  // Un admin_empresa ve Config solo si tiene permiso ver_config (o si el campo no existe aún)
+  const puedeVerConfig = esAdminCon && (
+    esAdminGlobal ||
+    perfil.permisos_admin?.ver_config !== false
+  );
+  if (puedeVerConfig) items.push({ href: 'admin-empresa.html', icono: '⚙️', label: 'Config', siempre: true });
   if (esAdminGlobal) items.push({ href: 'admin-global.html',  icono: '🌐', label: 'Super Admin', siempre: true });
 
   const visibles = items.filter(i => i.siempre || modulos[i.modulo] === true);
