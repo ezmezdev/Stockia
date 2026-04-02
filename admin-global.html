@@ -325,6 +325,69 @@
     </div>
   </div>
 
+  <!-- MODAL: Permisos de admin empresa -->
+  <div class="modal-overlay" id="modalPermisosUsuario">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-titulo">🔑 Permisos de administrador</div>
+        <button class="modal-cerrar" onclick="cerrarModal('modalPermisosUsuario')">✕</button>
+      </div>
+      <input type="hidden" id="permisosUserId">
+      <p id="permisosUserNombre" style="font-size:13px;font-weight:600;color:var(--texto);margin-bottom:16px">-</p>
+      <p class="texto-suave" style="font-size:12px;margin-bottom:14px">
+        Estos permisos aplican solo a los usuarios con rol <b>Admin de empresa</b>.
+        Controlá qué secciones del panel de configuración puede usar.
+      </p>
+
+      <div class="modulo-toggle-card" style="margin-bottom:8px">
+        <div class="modulo-toggle-info">
+          <span class="modulo-toggle-icono">⚙️</span>
+          <div>
+            <div class="modulo-toggle-titulo">Ver panel de configuración</div>
+            <div class="modulo-toggle-desc">Acceso al menú "Config" (admin-empresa.html)</div>
+          </div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="permVerConfig">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="modulo-toggle-card" style="margin-bottom:8px">
+        <div class="modulo-toggle-info">
+          <span class="modulo-toggle-icono">👥</span>
+          <div>
+            <div class="modulo-toggle-titulo">Crear y gestionar usuarios</div>
+            <div class="modulo-toggle-desc">Puede agregar operadores y activar/desactivar cuentas</div>
+          </div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="permCrearUsuarios">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="modulo-toggle-card">
+        <div class="modulo-toggle-info">
+          <span class="modulo-toggle-icono">💾</span>
+          <div>
+            <div class="modulo-toggle-titulo">Hacer backup y exportar</div>
+            <div class="modulo-toggle-desc">Puede descargar e importar datos de la empresa</div>
+          </div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="permHacerBackup">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="cerrarModal('modalPermisosUsuario')">Cancelar</button>
+        <button class="btn btn-acento" onclick="guardarPermisosUsuario()">✓ Guardar permisos</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: Usuarios de empresa -->
   <div class="modal-overlay" id="modalUsuariosEmpresa">
     <div class="modal" style="max-height:95vh">
@@ -647,20 +710,29 @@
       lista.innerHTML = `
         <div class="tabla-contenedor">
           <table class="tabla">
-            <thead><tr><th>Nombre</th><th>Rol</th><th>Estado</th><th>Acción</th></tr></thead>
+            <thead><tr><th>Nombre</th><th>Rol</th><th>Panel Config</th><th>Crear usuarios</th><th>Backup</th><th>Estado</th><th>Acción</th></tr></thead>
             <tbody>
-              ${usuarios.map(u => `
+              ${usuarios.map(u => {
+                const pa = u.permisos_admin || {};
+                const esAdminEmp = u.rol === 'admin_empresa';
+                return `
                 <tr>
                   <td><b>${u.nombre}</b><br><small class="texto-suave">${u.email}</small></td>
-                  <td><span class="badge ${u.rol==='admin_empresa'?'badge-violeta':'badge-azul'}">${u.rol}</span></td>
+                  <td><span class="badge ${esAdminEmp?'badge-violeta':'badge-azul'}">${u.rol}</span></td>
+                  <td>${esAdminEmp ? `<span class="badge ${pa.ver_config!==false?'badge-verde':'badge-gris'}">${pa.ver_config!==false?'✓ Sí':'✗ No'}</span>` : '<span class="texto-suave">—</span>'}</td>
+                  <td>${esAdminEmp ? `<span class="badge ${pa.crear_usuarios!==false?'badge-verde':'badge-gris'}">${pa.crear_usuarios!==false?'✓ Sí':'✗ No'}</span>` : '<span class="texto-suave">—</span>'}</td>
+                  <td>${esAdminEmp ? `<span class="badge ${pa.hacer_backup!==false?'badge-verde':'badge-gris'}">${pa.hacer_backup!==false?'✓ Sí':'✗ No'}</span>` : '<span class="texto-suave">—</span>'}</td>
                   <td><span class="badge ${u.activo?'badge-verde':'badge-gris'}">${u.activo?'Activo':'Inactivo'}</span></td>
                   <td>
-                    <button class="btn btn-sm btn-ghost" onclick="toggleUsuarioActivo('${u.id}',${u.activo},'${empId}')">
-                      ${u.activo?'🔒 Desactivar':'✓ Activar'}
-                    </button>
+                    <div class="tabla-acciones">
+                      ${esAdminEmp ? `<button class="btn btn-sm btn-ghost" onclick="abrirPermisosUsuario('${u.id}','${u.nombre}',${JSON.stringify(pa).replace(/'/g,"&#39;")})">🔑 Permisos</button>` : ''}
+                      <button class="btn btn-sm btn-ghost" onclick="toggleUsuarioActivo('${u.id}',${u.activo},'${empId}')">
+                        ${u.activo?'🔒':'✓'}
+                      </button>
+                    </div>
                   </td>
-                </tr>
-              `).join('')}
+                </tr>`;
+              }).join('')}
             </tbody>
           </table>
         </div>
@@ -701,6 +773,35 @@
       document.getElementById('formCrearUsuario').style.display = 'none';
       ['nuNombre','nuEmail','nuPass'].forEach(id => document.getElementById(id).value = '');
       cargarUsuariosEmpresa(empId);
+    }
+
+    // ── Permisos de usuario admin ─────────────────────────────
+    function abrirPermisosUsuario(uid, nombre, permisos) {
+      document.getElementById('permisosUserId').value = uid;
+      document.getElementById('permisosUserNombre').textContent = `👤 ${nombre}`;
+      const pa = typeof permisos === 'string' ? JSON.parse(permisos) : (permisos || {});
+      document.getElementById('permVerConfig').checked      = pa.ver_config      !== false;
+      document.getElementById('permCrearUsuarios').checked  = pa.crear_usuarios  !== false;
+      document.getElementById('permHacerBackup').checked    = pa.hacer_backup    !== false;
+      abrirModal('modalPermisosUsuario');
+    }
+
+    async function guardarPermisosUsuario() {
+      const uid = document.getElementById('permisosUserId').value;
+      const permisos = {
+        ver_config:      document.getElementById('permVerConfig').checked,
+        crear_usuarios:  document.getElementById('permCrearUsuarios').checked,
+        hacer_backup:    document.getElementById('permHacerBackup').checked,
+      };
+      const { error } = await sb.from('profiles')
+        .update({ permisos_admin: permisos })
+        .eq('id', uid);
+      if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
+      mostrarAlerta('Permisos actualizados ✓', 'exito');
+      cerrarModal('modalPermisosUsuario');
+      // Refrescar la lista de usuarios
+      const empId = document.getElementById('usuariosEmpId').value;
+      if (empId) cargarUsuariosEmpresa(empId);
     }
 
     async function toggleUsuarioActivo(uid, activo, empId) {

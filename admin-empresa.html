@@ -109,7 +109,7 @@
       </div>
 
       <!-- Usuarios de la empresa -->
-      <div class="card seccion">
+      <div class="card seccion" id="seccionUsuarios">
         <div class="seccion-titulo">👥 Usuarios de la empresa</div>
         <button class="btn btn-secundario btn-sm" onclick="abrirModal('modalNuevoUsuario')" style="margin-bottom:14px">
           ➕ Agregar usuario
@@ -125,7 +125,7 @@
       </div>
 
       <!-- Backup -->
-      <div class="card seccion">
+      <div class="card seccion" id="seccionBackup">
         <div class="seccion-titulo">💾 Backup de datos</div>
         <p class="texto-suave" style="font-size:13px;margin-bottom:14px">
           Descargá o importá todos los datos de tu empresa.
@@ -219,6 +219,7 @@
   <script>
     let empresaId = null;
     let empresa   = null;
+    let perfilActual = null;
     const modulosDisponibles = [
       { key: 'articulos',   label: 'Artículos',   icono: '📦', desc: 'Catálogo de artículos' },
       { key: 'clientes',    label: 'Clientes',    icono: '👥', desc: 'Gestión de clientes' },
@@ -238,8 +239,9 @@
         return;
       }
 
-      empresa   = sesion.empresa;
-      empresaId = empresa?.id;
+      empresa      = sesion.empresa;
+      empresaId    = empresa?.id;
+      perfilActual = sesion.perfil;
       document.getElementById('subtituloEmpresa').textContent = empresa?.nombre || '-';
       construirNav();
 
@@ -248,12 +250,30 @@
         document.getElementById('menuEmpresaInfo').textContent   = empresa.nombre;
       }
 
+      // ── Aplicar permisos del admin de empresa ──────────────
+      // El admin global siempre tiene acceso total.
+      // Un admin_empresa respeta su permisos_admin.
+      const pa = perfilActual?.permisos_admin || {};
+      const puedeCrearUsuarios = sesion.esAdminGlobal || pa.crear_usuarios !== false;
+      const puedeBackup        = sesion.esAdminGlobal || pa.hacer_backup   !== false;
+
+      // Ocultar sección usuarios si no tiene permiso
+      if (!puedeCrearUsuarios) {
+        const secUsuarios = document.getElementById('seccionUsuarios');
+        if (secUsuarios) secUsuarios.style.display = 'none';
+      }
+      // Ocultar sección backup si no tiene permiso
+      if (!puedeBackup) {
+        const secBackup = document.getElementById('seccionBackup');
+        if (secBackup) secBackup.style.display = 'none';
+      }
+
       // Cargar tipo de negocio actual
       const selTipo = document.getElementById('selectTipoNegocio');
       if (selTipo) selTipo.value = empresa?.tipo_negocio || 'mayorista';
 
       cargarModulos();
-      cargarUsuarios();
+      if (puedeCrearUsuarios) cargarUsuarios();
     })();
 
     function cargarModulos() {
