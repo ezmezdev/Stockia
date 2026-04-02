@@ -690,6 +690,7 @@
     }
 
     // ── Usuarios de empresa ───────────────────────────────────
+    let _usuariosEmpresaCache = []; // cache para permisos sin pasar JSON en onclick
     async function abrirUsuariosEmpresa(empId, empNombre) {
       document.getElementById('usuariosEmpId').value = empId;
       document.getElementById('modalUsuariosTitulo').textContent = `👥 Usuarios · ${empNombre}`;
@@ -707,25 +708,39 @@
         lista.innerHTML = `<p class="texto-suave" style="font-size:13px">Sin usuarios aún.</p>`;
         return;
       }
+
+      // Guardar en cache para acceder desde abrirPermisosUsuario sin pasar JSON en onclick
+      _usuariosEmpresaCache = usuarios;
+
       lista.innerHTML = `
         <div class="tabla-contenedor">
           <table class="tabla">
-            <thead><tr><th>Nombre</th><th>Rol</th><th>Panel Config</th><th>Crear usuarios</th><th>Backup</th><th>Estado</th><th>Acción</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Nombre</th><th>Rol</th>
+                <th>Panel Config</th><th>Crear usuarios</th><th>Backup</th>
+                <th>Estado</th><th>Acción</th>
+              </tr>
+            </thead>
             <tbody>
               ${usuarios.map(u => {
                 const pa = u.permisos_admin || {};
                 const esAdminEmp = u.rol === 'admin_empresa';
+                const badgePerm = (val) =>
+                  `<span class="badge ${val!==false?'badge-verde':'badge-gris'}">${val!==false?'✓ Sí':'✗ No'}</span>`;
                 return `
                 <tr>
                   <td><b>${u.nombre}</b><br><small class="texto-suave">${u.email}</small></td>
                   <td><span class="badge ${esAdminEmp?'badge-violeta':'badge-azul'}">${u.rol}</span></td>
-                  <td>${esAdminEmp ? `<span class="badge ${pa.ver_config!==false?'badge-verde':'badge-gris'}">${pa.ver_config!==false?'✓ Sí':'✗ No'}</span>` : '<span class="texto-suave">—</span>'}</td>
-                  <td>${esAdminEmp ? `<span class="badge ${pa.crear_usuarios!==false?'badge-verde':'badge-gris'}">${pa.crear_usuarios!==false?'✓ Sí':'✗ No'}</span>` : '<span class="texto-suave">—</span>'}</td>
-                  <td>${esAdminEmp ? `<span class="badge ${pa.hacer_backup!==false?'badge-verde':'badge-gris'}">${pa.hacer_backup!==false?'✓ Sí':'✗ No'}</span>` : '<span class="texto-suave">—</span>'}</td>
+                  <td>${esAdminEmp ? badgePerm(pa.ver_config)      : '<span class="texto-suave">—</span>'}</td>
+                  <td>${esAdminEmp ? badgePerm(pa.crear_usuarios)  : '<span class="texto-suave">—</span>'}</td>
+                  <td>${esAdminEmp ? badgePerm(pa.hacer_backup)    : '<span class="texto-suave">—</span>'}</td>
                   <td><span class="badge ${u.activo?'badge-verde':'badge-gris'}">${u.activo?'Activo':'Inactivo'}</span></td>
                   <td>
                     <div class="tabla-acciones">
-                      ${esAdminEmp ? `<button class="btn btn-sm btn-ghost" onclick="abrirPermisosUsuario('${u.id}','${u.nombre}',${JSON.stringify(pa).replace(/'/g,"&#39;")})">🔑 Permisos</button>` : ''}
+                      ${esAdminEmp
+                        ? `<button class="btn btn-sm btn-secundario" onclick="abrirPermisosUsuario('${u.id}')">🔑 Permisos</button>`
+                        : ''}
                       <button class="btn btn-sm btn-ghost" onclick="toggleUsuarioActivo('${u.id}',${u.activo},'${empId}')">
                         ${u.activo?'🔒':'✓'}
                       </button>
@@ -737,6 +752,7 @@
           </table>
         </div>
       `;
+
     }
 
     function abrirCrearUsuario() {
@@ -776,13 +792,17 @@
     }
 
     // ── Permisos de usuario admin ─────────────────────────────
-    function abrirPermisosUsuario(uid, nombre, permisos) {
+    function abrirPermisosUsuario(uid) {
+      // Buscar en el cache cargado — evita pasar JSON como atributo HTML
+      const u = _usuariosEmpresaCache.find(x => x.id === uid);
+      if (!u) { mostrarAlerta('Usuario no encontrado', 'error'); return; }
+      const pa = u.permisos_admin || {};
+
       document.getElementById('permisosUserId').value = uid;
-      document.getElementById('permisosUserNombre').textContent = `👤 ${nombre}`;
-      const pa = typeof permisos === 'string' ? JSON.parse(permisos) : (permisos || {});
-      document.getElementById('permVerConfig').checked      = pa.ver_config      !== false;
-      document.getElementById('permCrearUsuarios').checked  = pa.crear_usuarios  !== false;
-      document.getElementById('permHacerBackup').checked    = pa.hacer_backup    !== false;
+      document.getElementById('permisosUserNombre').textContent = `👤 ${u.nombre}`;
+      document.getElementById('permVerConfig').checked     = pa.ver_config     !== false;
+      document.getElementById('permCrearUsuarios').checked = pa.crear_usuarios !== false;
+      document.getElementById('permHacerBackup').checked   = pa.hacer_backup   !== false;
       abrirModal('modalPermisosUsuario');
     }
 
