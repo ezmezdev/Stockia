@@ -331,7 +331,17 @@
 
       const { data, error } = await sb.auth.signUp({ email, password: pass });
       if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
-      await sb.from('profiles').insert({ id: data.user.id, empresa_id: empresaId, nombre, email, rol });
+
+      // Usar RPC SECURITY DEFINER para evitar error de RLS en profiles
+      const { error: e2 } = await sb.rpc('crear_perfil_usuario', {
+        p_id:         data.user.id,
+        p_empresa_id: empresaId,
+        p_nombre:     nombre,
+        p_email:      email,
+        p_rol:        rol
+      });
+      if (e2) { mostrarAlerta('Error perfil: ' + e2.message, 'error'); return; }
+
       mostrarAlerta('Usuario creado ✓', 'exito');
       cerrarModal('modalNuevoUsuario');
       ['nuNombre','nuEmail','nuPass'].forEach(id => document.getElementById(id).value = '');

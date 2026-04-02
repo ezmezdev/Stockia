@@ -558,14 +558,19 @@
       if (!nombre || !email || !pass) { mostrarAlerta('Completá todos los campos', 'error'); return; }
       if (pass.length < 8) { mostrarAlerta('La contraseña debe tener mínimo 8 caracteres', 'error'); return; }
 
-      // Crear usuario en Supabase Auth vía Admin API no disponible desde frontend.
-      // Usamos signUp que crea el usuario. El admin puede invitarlo así.
-      // Nota: Esto requiere que "Disable email confirmations" esté ON en Supabase Auth.
+      // 1. Crear usuario en Supabase Auth
       const { data, error } = await sb.auth.signUp({ email, password: pass });
       if (error) { mostrarAlerta('Error Auth: ' + error.message, 'error'); return; }
 
-      const { error: e2 } = await sb.from('profiles').insert({
-        id: data.user.id, empresa_id: empId, nombre, email, rol
+      // 2. Crear perfil usando función SECURITY DEFINER (bypasea RLS)
+      //    Necesaria porque signUp() cambia la sesión activa al nuevo usuario,
+      //    y ese usuario no tiene permisos para insertarse en profiles.
+      const { error: e2 } = await sb.rpc('crear_perfil_usuario', {
+        p_id:         data.user.id,
+        p_empresa_id: empId,
+        p_nombre:     nombre,
+        p_email:      email,
+        p_rol:        rol
       });
       if (e2) { mostrarAlerta('Error perfil: ' + e2.message, 'error'); return; }
 
