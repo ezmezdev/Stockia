@@ -803,6 +803,11 @@
       document.getElementById('permVerConfig').checked     = pa.ver_config     !== false;
       document.getElementById('permCrearUsuarios').checked = pa.crear_usuarios !== false;
       document.getElementById('permHacerBackup').checked   = pa.hacer_backup   !== false;
+
+      // Asegurar que quede por encima del modal de usuarios
+      const el = document.getElementById('modalPermisosUsuario');
+      if (el) el.style.zIndex = '1100';
+
       abrirModal('modalPermisosUsuario');
     }
 
