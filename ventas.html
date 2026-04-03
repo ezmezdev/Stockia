@@ -4,15 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Stockia — Ventas</title>
-  <!-- v4.2 -->
+  <!-- v4.4 -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/global.css?v=4.0">
-  <!-- jsPDF para exportar PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <!-- SheetJS para exportar Excel -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
-    /* ── Estilos base heredados ── */
+    /* ── Heredados ── */
     .resumen-venta{background:var(--bg);border-radius:var(--r-md);padding:14px;margin-top:12px;border:1px solid var(--borde);}
     .resumen-row{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;}
     .resumen-total{font-size:18px;font-weight:800;color:var(--azul-nav);}
@@ -27,134 +25,72 @@
     .pago-item-monto{font-size:15px;font-weight:700;color:var(--verde);}
     .pago-item-fecha{font-size:11px;color:var(--texto-suave);}
     .pago-item-notas{font-size:11px;color:var(--texto-suave);font-style:italic;}
+    /* ── Paneles resumen/arqueo ── */
+    .btn-resumen{background:var(--azul-nav);color:#fff;border:none;border-radius:var(--r-md);padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);display:flex;align-items:center;gap:6px;transition:var(--transition);}
+    .btn-resumen:hover{background:#162d6e;}
+    .btn-arqueo{background:var(--verde);color:#fff;border:none;border-radius:var(--r-md);padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);display:flex;align-items:center;gap:6px;transition:var(--transition);}
+    .btn-arqueo:hover{background:var(--verde-hover);}
+    .panel-flotante{background:var(--bg-card);border-radius:var(--r-lg);border:2px solid var(--azul-accion);padding:20px;margin-bottom:16px;box-shadow:var(--sombra-md);display:none;}
+    .panel-flotante.activo{display:block;}
+    .panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+    .panel-titulo{font-size:16px;font-weight:700;color:var(--texto);display:flex;align-items:center;gap:8px;}
+    .panel-cerrar{background:none;border:none;cursor:pointer;font-size:20px;color:var(--texto-suave);padding:2px;}
+    .periodo-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px;}
+    .periodo-tab{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;border:2px solid var(--borde);background:#fff;cursor:pointer;color:var(--texto-suave);font-family:var(--font);transition:var(--transition);}
+    .periodo-tab.activo{background:var(--azul-nav);color:#fff;border-color:var(--azul-nav);}
+    .periodo-rango{display:none;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+    .periodo-rango.visible{display:flex;}
+    .resumen-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+    .resumen-card{background:var(--bg);border-radius:var(--r-md);padding:14px;border-left:4px solid var(--borde);}
+    .resumen-card.efectivo{border-color:var(--verde);}
+    .resumen-card.transf{border-color:var(--azul-accion);}
+    .resumen-card.tarjeta{border-color:var(--naranja);}
+    .resumen-card.cta{border-color:var(--violeta);}
+    .resumen-card.cobros{border-color:#0891b2;}
+    .resumen-card.gran-total{border-color:var(--azul-nav);background:#eef2ff;grid-column:1/-1;}
+    .resumen-card-label{font-size:11px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;}
+    .resumen-card-valor{font-size:22px;font-weight:800;color:var(--texto);}
+    .resumen-card-sub{font-size:11px;color:var(--texto-suave);margin-top:2px;}
+    .seccion-cobros{margin-top:14px;padding-top:14px;border-top:1px solid var(--borde);}
+    .seccion-titulo{font-size:13px;font-weight:700;color:var(--texto);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+    .arqueo-seccion{margin-bottom:16px;}
+    .arqueo-comparacion{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0;}
+    .arqueo-box{flex:1;min-width:130px;padding:14px;border-radius:var(--r-md);text-align:center;border:2px solid var(--borde);}
+    .arqueo-box.sistema{border-color:var(--azul-accion);background:#eff6ff;}
+    .arqueo-box.contado{border-color:var(--verde);background:#ecfdf5;}
+    .arqueo-box.diferencia-ok{border-color:var(--verde);background:#ecfdf5;}
+    .arqueo-box.diferencia-mal{border-color:var(--rojo);background:#fef2f2;}
+    .arqueo-box-label{font-size:11px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.4px;}
+    .arqueo-box-valor{font-size:20px;font-weight:800;margin-top:4px;}
+    .billetes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin:12px 0;}
+    .billete-item{display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:var(--r-sm);padding:8px 10px;border:1px solid var(--borde);}
+    .billete-label{font-size:13px;font-weight:600;color:var(--texto);min-width:55px;}
+    .billete-input{width:60px;padding:4px 6px;border:1px solid var(--borde);border-radius:var(--r-sm);font-size:14px;font-weight:700;text-align:center;font-family:var(--font);}
+    .billete-subtotal{font-size:11px;color:var(--texto-suave);}
+    .arqueo-historial-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg);border-radius:var(--r-sm);border:1px solid var(--borde);margin-bottom:6px;}
+    .descarga-bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
 
-    /* ── Barra de acciones superior ── */
-    .ventas-acciones-bar {
-      display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
-      margin-bottom: 14px;
-    }
-    .btn-resumen {
-      background: var(--azul-nav); color: #fff;
-      border: none; border-radius: var(--r-md);
-      padding: 9px 16px; font-size: 13px; font-weight: 600;
-      cursor: pointer; font-family: var(--font);
-      display: flex; align-items: center; gap: 6px;
-      transition: var(--transition);
-    }
-    .btn-resumen:hover { background: #162d6e; }
-    .btn-arqueo {
-      background: var(--verde); color: #fff;
-      border: none; border-radius: var(--r-md);
-      padding: 9px 16px; font-size: 13px; font-weight: 600;
-      cursor: pointer; font-family: var(--font);
-      display: flex; align-items: center; gap: 6px;
-      transition: var(--transition);
-    }
-    .btn-arqueo:hover { background: var(--verde-hover); }
+    /* ── CARRITO (kiosco) ── */
+    .carrito-buscador{display:flex;gap:8px;margin-bottom:12px;}
+    .carrito-buscador input{flex:1;}
+    .carrito-tabla{width:100%;border-collapse:collapse;margin-bottom:12px;}
+    .carrito-tabla th{font-size:11px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.4px;padding:6px 8px;border-bottom:2px solid var(--borde);text-align:left;}
+    .carrito-tabla td{padding:8px;border-bottom:1px solid var(--borde);font-size:13px;vertical-align:middle;}
+    .carrito-tabla tr:last-child td{border-bottom:none;}
+    .carrito-vacio{text-align:center;padding:24px;color:var(--texto-suave);font-size:13px;}
+    .carrito-total-bar{background:var(--azul-nav);color:#fff;border-radius:var(--r-md);padding:14px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+    .carrito-total-label{font-size:13px;opacity:.85;}
+    .carrito-total-valor{font-size:24px;font-weight:800;}
+    .cant-control{display:flex;align-items:center;gap:6px;}
+    .cant-btn{width:26px;height:26px;border-radius:50%;border:1px solid var(--borde);background:#fff;cursor:pointer;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;color:var(--texto);line-height:1;}
+    .cant-btn:hover{background:var(--bg);}
+    .cant-num{font-weight:700;min-width:20px;text-align:center;}
 
-    /* ── Panel resumen / arqueo (debajo del header) ── */
-    .panel-flotante {
-      background: var(--bg-card); border-radius: var(--r-lg);
-      border: 2px solid var(--azul-accion);
-      padding: 20px; margin-bottom: 16px;
-      box-shadow: var(--sombra-md);
-      display: none;
-    }
-    .panel-flotante.activo { display: block; }
-    .panel-header {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 16px;
-    }
-    .panel-titulo { font-size: 16px; font-weight: 700; color: var(--texto); display: flex; align-items: center; gap: 8px; }
-    .panel-cerrar { background: none; border: none; cursor: pointer; font-size: 20px; color: var(--texto-suave); padding: 2px; }
+    /* ── Detalle ítem carrito ── */
+    .item-devuelto{opacity:.45;text-decoration:line-through;}
 
-    /* ── Selector de período ── */
-    .periodo-tabs {
-      display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 16px;
-    }
-    .periodo-tab {
-      padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
-      border: 2px solid var(--borde); background: #fff; cursor: pointer;
-      color: var(--texto-suave); font-family: var(--font); transition: var(--transition);
-    }
-    .periodo-tab.activo { background: var(--azul-nav); color: #fff; border-color: var(--azul-nav); }
-    .periodo-rango {
-      display: none; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px;
-    }
-    .periodo-rango.visible { display: flex; }
-
-    /* ── Cards de totales ── */
-    .resumen-cards {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;
-    }
-    .resumen-card {
-      background: var(--bg); border-radius: var(--r-md);
-      padding: 14px; border-left: 4px solid var(--borde);
-    }
-    .resumen-card.efectivo   { border-color: var(--verde); }
-    .resumen-card.transf     { border-color: var(--azul-accion); }
-    .resumen-card.tarjeta    { border-color: var(--naranja); }
-    .resumen-card.cta        { border-color: var(--violeta); }
-    .resumen-card.cobros     { border-color: #0891b2; }
-    .resumen-card.gran-total { border-color: var(--azul-nav); background: #eef2ff; grid-column: 1/-1; }
-    .resumen-card-label { font-size: 11px; font-weight: 700; color: var(--texto-suave); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 4px; }
-    .resumen-card-valor { font-size: 22px; font-weight: 800; color: var(--texto); }
-    .resumen-card-sub   { font-size: 11px; color: var(--texto-suave); margin-top: 2px; }
-
-    /* ── Sección cobros ── */
-    .seccion-cobros { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--borde); }
-    .seccion-titulo { font-size: 13px; font-weight: 700; color: var(--texto); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
-
-    /* ── Arqueo de caja ── */
-    .arqueo-seccion { margin-bottom: 16px; }
-    .arqueo-comparacion {
-      display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0;
-    }
-    .arqueo-box {
-      flex: 1; min-width: 130px; padding: 14px; border-radius: var(--r-md);
-      text-align: center; border: 2px solid var(--borde);
-    }
-    .arqueo-box.sistema { border-color: var(--azul-accion); background: #eff6ff; }
-    .arqueo-box.contado { border-color: var(--verde); background: #ecfdf5; }
-    .arqueo-box.diferencia-ok  { border-color: var(--verde); background: #ecfdf5; }
-    .arqueo-box.diferencia-mal { border-color: var(--rojo);  background: #fef2f2; }
-    .arqueo-box-label { font-size: 11px; font-weight: 700; color: var(--texto-suave); text-transform: uppercase; letter-spacing: .4px; }
-    .arqueo-box-valor { font-size: 20px; font-weight: 800; margin-top: 4px; }
-
-    /* Billetes contador */
-    .billetes-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px;
-      margin: 12px 0;
-    }
-    .billete-item {
-      display: flex; align-items: center; gap: 8px;
-      background: var(--bg); border-radius: var(--r-sm);
-      padding: 8px 10px; border: 1px solid var(--borde);
-    }
-    .billete-label { font-size: 13px; font-weight: 600; color: var(--texto); min-width: 55px; }
-    .billete-input {
-      width: 60px; padding: 4px 6px; border: 1px solid var(--borde);
-      border-radius: var(--r-sm); font-size: 14px; font-weight: 700;
-      text-align: center; font-family: var(--font);
-    }
-    .billete-subtotal { font-size: 11px; color: var(--texto-suave); }
-
-    .arqueo-historial-item {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 12px; background: var(--bg);
-      border-radius: var(--r-sm); border: 1px solid var(--borde); margin-bottom: 6px;
-    }
-
-    /* ── Botones descarga ── */
-    .descarga-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
-
-    @media (min-width: 600px) {
-      .resumen-cards { grid-template-columns: repeat(3, 1fr); }
-    }
-    @media (min-width: 900px) {
-      .resumen-cards { grid-template-columns: repeat(5, 1fr); }
-      .resumen-card.gran-total { grid-column: auto; }
-    }
+    @media(min-width:600px){.resumen-cards{grid-template-columns:repeat(3,1fr);}}
+    @media(min-width:900px){.resumen-cards{grid-template-columns:repeat(5,1fr);}.resumen-card.gran-total{grid-column:auto;}}
   </style>
 </head>
 <body>
@@ -203,28 +139,21 @@
     <div class="page-header">
       <div>
         <h1 class="page-titulo">💰 Ventas</h1>
-        <p class="page-subtitulo">Historial y registro de ventas</p>
+        <p class="page-subtitulo" id="subtituloVentas">Historial y registro de ventas</p>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <!-- Botones resumen/arqueo (se muestran según config empresa) -->
-        <button class="btn-resumen" id="btnResumen" style="display:none" onclick="togglePanel('resumen')">
-          📊 Resumen
-        </button>
-        <button class="btn-arqueo" id="btnArqueo" style="display:none" onclick="togglePanel('arqueo')">
-          🏦 Arqueo
-        </button>
+        <button class="btn-resumen" id="btnResumen" style="display:none" onclick="togglePanel('resumen')">📊 Resumen</button>
+        <button class="btn-arqueo"  id="btnArqueo"  style="display:none" onclick="togglePanel('arqueo')">🏦 Arqueo</button>
         <button class="btn btn-acento" onclick="abrirNuevaVenta()">➕ Nueva Venta</button>
       </div>
     </div>
 
-    <!-- ═══ PANEL RESUMEN DE VENTAS ═══ -->
+    <!-- ═══ PANEL RESUMEN ═══ -->
     <div class="panel-flotante" id="panelResumen">
       <div class="panel-header">
         <div class="panel-titulo">📊 Resumen de Ventas</div>
         <button class="panel-cerrar" onclick="togglePanel('resumen')">✕</button>
       </div>
-
-      <!-- Selector de período -->
       <div class="periodo-tabs">
         <button class="periodo-tab activo" onclick="selPeriodo('hoy',this)">Hoy</button>
         <button class="periodo-tab" onclick="selPeriodo('semana',this)">Esta semana</button>
@@ -239,25 +168,19 @@
         <label style="font-size:12px;font-weight:600;color:var(--texto-suave)">Hasta:</label>
         <input type="date" class="form-input" id="rangoHasta" style="width:auto" onchange="calcularResumen()">
       </div>
-
-      <div id="resumenContenido">
-        <div class="cargando"><div class="spinner"></div><span>Calculando...</span></div>
-      </div>
-
-      <div class="descarga-bar" id="descargaBarResumen">
-        <button class="btn btn-primario btn-sm" onclick="exportarResumenPDF()">📄 Descargar PDF</button>
-        <button class="btn btn-ghost btn-sm" onclick="exportarResumenExcel()">📊 Descargar Excel</button>
+      <div id="resumenContenido"><div class="cargando"><div class="spinner"></div></div></div>
+      <div class="descarga-bar">
+        <button class="btn btn-primario btn-sm" onclick="exportarResumenPDF()">📄 PDF</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportarResumenExcel()">📊 Excel</button>
       </div>
     </div>
 
-    <!-- ═══ PANEL ARQUEO DE CAJA ═══ -->
+    <!-- ═══ PANEL ARQUEO ═══ -->
     <div class="panel-flotante" id="panelArqueo" style="border-color:var(--verde)">
       <div class="panel-header">
         <div class="panel-titulo">🏦 Arqueo de Caja</div>
         <button class="panel-cerrar" onclick="togglePanel('arqueo')">✕</button>
       </div>
-
-      <!-- Turno -->
       <div class="form-grupo" id="grupoTurno" style="display:none">
         <label class="form-label">Turno</label>
         <select class="form-select" id="arqueoTurno" style="max-width:200px" onchange="cargarDatosArqueo()">
@@ -265,13 +188,7 @@
           <option value="tarde">🌆 Tarde</option>
         </select>
       </div>
-
-      <!-- Datos del sistema -->
-      <div id="arqueoSistema">
-        <div class="cargando"><div class="spinner"></div><span>Calculando...</span></div>
-      </div>
-
-      <!-- Conteo físico (si está habilitado) -->
+      <div id="arqueoSistema"><div class="cargando"><div class="spinner"></div></div></div>
       <div id="arqueoFisicoSection" style="display:none">
         <div class="seccion-titulo" style="margin-top:16px">💵 Conteo de efectivo físico</div>
         <div class="billetes-grid" id="billetesGrid"></div>
@@ -282,18 +199,16 @@
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-acento" onclick="guardarArqueo()">✓ Cerrar y guardar arqueo</button>
-          <button class="btn btn-ghost btn-sm" onclick="exportarArqueoPDF()">📄 PDF del arqueo</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportarArqueoPDF()">📄 PDF</button>
         </div>
       </div>
-
-      <!-- Historial de arqueos -->
       <div class="seccion-cobros" id="historialArqueos" style="display:none">
         <div class="seccion-titulo">📋 Últimos arqueos</div>
         <div id="listaArqueos"></div>
       </div>
     </div>
 
-    <!-- Filtros tabla de ventas -->
+    <!-- Filtros -->
     <div class="card mb-24">
       <div class="filtros-bar">
         <div class="buscador-contenedor" style="margin:0;flex:1;min-width:180px">
@@ -316,7 +231,6 @@
       </div>
     </div>
 
-    <!-- Stats rápidos -->
     <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:14px">
       <div class="stat-card">
         <div class="stat-icono naranja">💰</div>
@@ -328,7 +242,6 @@
       </div>
     </div>
 
-    <!-- Tabla ventas -->
     <div class="card">
       <div class="tabla-contenedor">
         <table class="tabla">
@@ -336,7 +249,7 @@
             <tr>
               <th>Cód.</th><th>Fecha</th>
               <th id="thClienteCol">Cliente</th>
-              <th>Artículo</th><th>Total</th><th>Saldo</th><th>Estado</th><th>Acciones</th>
+              <th>Artículo / Ítems</th><th>Total</th><th>Saldo</th><th>Estado</th><th>Acciones</th>
             </tr>
           </thead>
           <tbody id="tablaVentas">
@@ -349,7 +262,7 @@
   <footer class="app-footer">© <span class="anio-actual"></span> Stockia.</footer>
 </div>
 
-<!-- ═══ MODAL: Nueva Venta ═══ -->
+<!-- ═══ MODAL: Nueva Venta — MAYORISTA (individual) ═══ -->
 <div class="modal-overlay" id="modalVenta">
   <div class="modal" style="max-width:580px">
     <div class="modal-header">
@@ -433,7 +346,89 @@
   </div>
 </div>
 
-<!-- ═══ MODAL: Detalle venta + historial pagos ═══ -->
+<!-- ═══ MODAL: Nueva Venta — KIOSCO (carrito) ═══ -->
+<div class="modal-overlay" id="modalCarrito">
+  <div class="modal" style="max-width:640px;max-height:95vh">
+    <div class="modal-header">
+      <div class="modal-titulo">🛒 Nueva Venta</div>
+      <button class="modal-cerrar" onclick="cerrarModal('modalCarrito')">✕</button>
+    </div>
+
+    <div class="form-grupo">
+      <label class="form-label">📅 Fecha</label>
+      <input type="date" class="form-input" id="carrFecha" style="max-width:180px">
+    </div>
+
+    <!-- Cliente (si módulo activo) -->
+    <div class="form-grupo" id="grupoClienteCarrito" style="display:none">
+      <label class="form-label">Cliente <small class="texto-suave">(opcional)</small></label>
+      <select class="form-select" id="carrCliente">
+        <option value="">— Consumidor final —</option>
+      </select>
+    </div>
+
+    <!-- Código de venta -->
+    <div class="form-grupo">
+      <label class="form-label">N° de venta</label>
+      <input type="text" class="form-input" id="carrCodigo" placeholder="Ej: 1001" oninput="limpiarErrCarrCodigo()">
+      <div class="codigo-sugerido" id="carrCodigoSugerido" onclick="usarSugeridoCarrito()"></div>
+      <div class="error-codigo" id="carrErrCodigo">⚠ Este código ya existe.</div>
+    </div>
+
+    <!-- Buscador de artículos -->
+    <div style="font-size:13px;font-weight:700;margin-bottom:8px">Agregar artículos</div>
+    <div class="carrito-buscador">
+      <input type="text" class="form-input" id="carrBusqueda"
+        placeholder="Escribí para buscar artículo..."
+        oninput="filtrarArticulosCarrito()"
+        autocomplete="off">
+    </div>
+    <!-- Resultados de búsqueda -->
+    <div id="carrResultados" style="display:none;max-height:150px;overflow-y:auto;border:1px solid var(--borde);border-radius:var(--r-md);margin-bottom:12px;background:#fff;"></div>
+
+    <!-- Tabla del carrito -->
+    <div style="min-height:80px">
+      <table class="carrito-tabla" id="carrTabla">
+        <thead>
+          <tr>
+            <th>Artículo</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="carrItems">
+          <tr><td colspan="5" class="carrito-vacio">Sin artículos todavía.<br>Buscá uno arriba para agregarlo.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Total -->
+    <div class="carrito-total-bar" id="carrTotalBar" style="display:none">
+      <div class="carrito-total-label">Total del ticket</div>
+      <div class="carrito-total-valor" id="carrTotal">$0</div>
+    </div>
+
+    <!-- Forma de pago -->
+    <div class="form-grupo">
+      <label class="form-label">Forma de pago</label>
+      <select class="form-select" id="carrFormaPago">
+        <option value="efectivo">💵 Efectivo</option>
+        <option value="transferencia">🏦 Transferencia</option>
+        <option value="tarjeta">💳 Tarjeta</option>
+      </select>
+    </div>
+
+    <div class="form-grupo">
+      <label class="form-label">Notas</label>
+      <input type="text" class="form-input" id="carrNotas" placeholder="Observaciones del ticket">
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalCarrito')">Cancelar</button>
+      <button class="btn btn-acento" id="btnGuardarCarrito" onclick="guardarCarrito()">✓ Confirmar venta</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Detalle venta ═══ -->
 <div class="modal-overlay" id="modalDetalleVenta">
   <div class="modal" style="max-width:620px;max-height:95vh">
     <div class="modal-header">
@@ -522,1029 +517,939 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/global.js?v=4.0"></script>
 <script>
-  // ══════════════════════════════════════════════════════════
-  // VARIABLES GLOBALES
-  // ══════════════════════════════════════════════════════════
-  let empresaId     = null;
-  let empresa       = null;
-  let todasVentas   = [];
-  let articulos     = [];
-  let clientes      = [];
-  let esAdmin       = false;
-  let kiosco        = false;
-  let tieneClientes = false;
-  let _detalleVentaId   = null;
-  let _periodoActual    = 'hoy';
-  let _configFunciones  = {};
-  let _datosResumen     = null; // para exportar
+// ════════════════════════════════════════════════════════════
+// VARIABLES GLOBALES
+// ════════════════════════════════════════════════════════════
+let empresaId       = null;
+let empresa         = null;
+let todasVentas     = [];
+let articulos       = [];
+let clientes        = [];
+let esAdmin         = false;
+let kiosco          = false;
+let tieneClientes   = false;
+let _detalleVentaId = null;
+let _periodoActual  = 'hoy';
+let _configFunciones= {};
+let _datosResumen   = null;
 
-  const PAGO_LABEL = {efectivo:'💵 Efectivo',transferencia:'🏦 Transf.',tarjeta:'💳 Tarjeta',cuenta_corriente:'📋 Cta.cte.'};
-  const BILLETES   = [10000,5000,2000,1000,500,200,100,50,20,10];
+// Carrito (modo kiosco)
+let _carrito = []; // [{articulo, cantidad, precio, subtotal}]
 
-  function hoyISO()        { return new Date().toISOString().split('T')[0]; }
-  function fechaParaInput(f) { if(!f)return hoyISO(); return new Date(f).toISOString().split('T')[0]; }
+const PAGO_LABEL = {efectivo:'💵 Efectivo',transferencia:'🏦 Transf.',tarjeta:'💳 Tarjeta',cuenta_corriente:'📋 Cta.cte.'};
+const BILLETES   = [10000,5000,2000,1000,500,200,100,50,20,10];
 
-  // ══════════════════════════════════════════════════════════
-  // INIT
-  // ══════════════════════════════════════════════════════════
-  (async () => {
-    const sesion = await verificarSesion();
-    if (!sesion) return;
-    if (sesion.esAdminGlobal && !sesion.empresa) { window.location.href='admin-global.html'; return; }
-    empresa       = sesion.empresa;
-    empresaId     = empresa?.id;
-    esAdmin       = sesion.esAdminGlobal || sesion.perfil.rol === 'admin_empresa';
-    kiosco        = esKiosco();
-    tieneClientes = empresa?.modulos_habilitados?.clientes !== false;
-    _configFunciones = empresa?.config_funciones || {};
+function hoyISO()          { return new Date().toISOString().split('T')[0]; }
+function fechaParaInput(f) { if(!f)return hoyISO(); return new Date(f).toISOString().split('T')[0]; }
 
-    if (empresa?.modulos_habilitados?.ventas === false) {
-      document.querySelector('.main-content').innerHTML = `<div class="estado-vacio" style="padding-top:80px"><div class="estado-vacio-icono">🔒</div><div class="estado-vacio-titulo">Módulo deshabilitado</div><a href="dashboard.html" class="btn btn-ghost mt-16">← Volver</a></div>`;
-      return;
-    }
-    construirNav();
-    document.getElementById('lblArtVenta').textContent = (empresa?.modulo_articulos_nombre||'Artículos').slice(0,-1) + ' *';
+// ════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════
+(async () => {
+  const sesion = await verificarSesion();
+  if (!sesion) return;
+  if (sesion.esAdminGlobal && !sesion.empresa) { window.location.href='admin-global.html'; return; }
+  empresa          = sesion.empresa;
+  empresaId        = empresa?.id;
+  esAdmin          = sesion.esAdminGlobal || sesion.perfil.rol === 'admin_empresa';
+  kiosco           = esKiosco();
+  tieneClientes    = empresa?.modulos_habilitados?.clientes !== false;
+  _configFunciones = empresa?.config_funciones || {};
 
-    if (kiosco && !tieneClientes) {
+  if (empresa?.modulos_habilitados?.ventas === false) {
+    document.querySelector('.main-content').innerHTML = `<div class="estado-vacio" style="padding-top:80px"><div class="estado-vacio-icono">🔒</div><div class="estado-vacio-titulo">Módulo deshabilitado</div><a href="dashboard.html" class="btn btn-ghost mt-16">← Volver</a></div>`;
+    return;
+  }
+  construirNav();
+
+  // Subtítulo según modo
+  document.getElementById('subtituloVentas').textContent =
+    kiosco ? '🛒 Modo kiosco — ticket multi-artículo' : 'Historial y registro de ventas';
+
+  document.getElementById('lblArtVenta').textContent =
+    (empresa?.modulo_articulos_nombre||'Artículos').slice(0,-1) + ' *';
+
+  if (kiosco && !tieneClientes) {
+    document.getElementById('thClienteCol').style.display = 'none';
+  }
+  if (!kiosco) {
+    // Modo mayorista: ocultar columna cliente si no hay módulo
+    if (!tieneClientes) {
       document.getElementById('grupoClienteVenta').style.display = 'none';
       document.getElementById('thClienteCol').style.display = 'none';
     }
+  }
 
-    // Mostrar botones según config empresa
-    if (_configFunciones.resumen_ventas) {
-      document.getElementById('btnResumen').style.display = 'flex';
-    }
-    if (_configFunciones.arqueo_caja) {
-      document.getElementById('btnArqueo').style.display = 'flex';
-      // Verificar si operador puede arquear
-      if (!esAdmin && _configFunciones.arqueo_quien === 'admin') {
-        document.getElementById('btnArqueo').style.display = 'none';
-      }
-    }
+  if (_configFunciones.resumen_ventas) document.getElementById('btnResumen').style.display = 'flex';
+  if (_configFunciones.arqueo_caja) {
+    document.getElementById('btnArqueo').style.display = 'flex';
+    if (!esAdmin && _configFunciones.arqueo_quien === 'admin')
+      document.getElementById('btnArqueo').style.display = 'none';
+  }
+  if (_configFunciones.arqueo_turnos === 'turno')
+    document.getElementById('grupoTurno').style.display = 'block';
 
-    // Configurar turnos en arqueo
-    if (_configFunciones.arqueo_turnos === 'turno') {
-      document.getElementById('grupoTurno').style.display = 'block';
-    }
+  await Promise.all([cargarArticulosSelect(), tieneClientes ? cargarClientesSelect() : Promise.resolve()]);
+  await cargarVentas();
+  iniciarFiltros();
+})();
 
-    await Promise.all([cargarArticulosSelect(), tieneClientes ? cargarClientesSelect() : Promise.resolve()]);
+// ════════════════════════════════════════════════════════════
+// ABRIR NUEVA VENTA — decide qué modal mostrar
+// ════════════════════════════════════════════════════════════
+async function abrirNuevaVenta() {
+  if (kiosco) {
+    await abrirCarrito();
+  } else {
+    await abrirVentaIndividual();
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// MODO MAYORISTA — venta individual (igual que siempre)
+// ════════════════════════════════════════════════════════════
+async function abrirVentaIndividual() {
+  document.getElementById('ventaId').value='';
+  document.getElementById('ventaFecha').value=hoyISO();
+  document.getElementById('ventaArticulo').value='';
+  document.getElementById('ventaCliente').value='';
+  document.getElementById('ventaCantidad').value='1';
+  document.getElementById('ventaPrecio').value='';
+  document.getElementById('ventaFormaPago').value='efectivo';
+  document.getElementById('ventaCuotas').value='1';
+  document.getElementById('ventaRecargo').value='0';
+  document.getElementById('ventaPagado').value='0';
+  document.getElementById('ventaNotas').value='';
+  document.getElementById('ventaCodigo').value='';
+  document.getElementById('seccionCuotas').style.display='none';
+  document.getElementById('modalVentaTitulo').textContent='➕ Nueva Venta';
+  limpiarErrorCodigoVenta();
+  const sig = await siguienteCodigo('venta', empresaId);
+  const sug = document.getElementById('ventaCodigoSugerido');
+  sug.textContent = `Sugerido: N° ${sig} (click para usar)`;
+  sug.dataset.valor = sig;
+  calcularTotal();
+  abrirModal('modalVenta');
+}
+
+function actualizarPrecio() {
+  const sel = document.getElementById('ventaArticulo');
+  const precio = sel.options[sel.selectedIndex]?.dataset?.precio;
+  if (precio) document.getElementById('ventaPrecio').value = precio;
+  calcularTotal();
+}
+function toggleCuotas() {
+  document.getElementById('seccionCuotas').style.display =
+    document.getElementById('ventaFormaPago').value === 'cuenta_corriente' ? 'block' : 'none';
+  calcularTotal();
+}
+function calcularTotal() {
+  const cant   = parseFloat(document.getElementById('ventaCantidad').value)||1;
+  const precio = parseFloat(document.getElementById('ventaPrecio').value)||0;
+  const recargo= parseFloat(document.getElementById('ventaRecargo').value)||0;
+  const pagado = parseFloat(document.getElementById('ventaPagado').value)||0;
+  const sub=cant*precio, monRec=sub*(recargo/100), total=sub+monRec, saldo=Math.max(0,total-pagado);
+  document.getElementById('rSubtotal').textContent=formatoPeso(sub);
+  document.getElementById('rRecargo').textContent=formatoPeso(monRec);
+  document.getElementById('rTotal').textContent=formatoPeso(total);
+  document.getElementById('rPagado').textContent=formatoPeso(pagado);
+  document.getElementById('rSaldo').textContent=formatoPeso(saldo);
+}
+
+async function guardarVenta() {
+  const artId  = document.getElementById('ventaArticulo').value;
+  const codigo = document.getElementById('ventaCodigo').value.trim()||null;
+  const fecha  = document.getElementById('ventaFecha').value||hoyISO();
+  const precio = parseFloat(document.getElementById('ventaPrecio').value)||0;
+  const cant   = parseInt(document.getElementById('ventaCantidad').value)||1;
+  const recargo= parseFloat(document.getElementById('ventaRecargo').value)||0;
+  const pagado = parseFloat(document.getElementById('ventaPagado').value)||0;
+  const cuotas = parseInt(document.getElementById('ventaCuotas').value)||1;
+  const fp     = document.getElementById('ventaFormaPago').value;
+  const cliId  = document.getElementById('ventaCliente').value||null;
+  const notas  = document.getElementById('ventaNotas').value.trim()||null;
+
+  if (!artId)  { mostrarAlerta('Seleccioná un artículo','error'); return; }
+  if (!precio) { mostrarAlerta('El precio no puede ser 0','error'); return; }
+  if (codigo) {
+    const unico = await codigoEsUnico('ventas','codigo_venta',codigo,empresaId,null);
+    if (!unico) { document.getElementById('ventaErrCodigo').classList.add('visible'); return; }
+  }
+  const artSel = articulos.find(a=>a.id===artId);
+  const sub=cant*precio, monRec=sub*(recargo/100), total=sub+monRec, saldo=Math.max(0,total-pagado);
+  const estado = saldo===0?'pagado':(pagado>0?'parcial':'pendiente');
+  const btn = document.getElementById('btnGuardarVenta');
+  btn.disabled=true; btn.textContent='Guardando...';
+  try {
+    const{data:vd,error}=await sb.from('ventas').insert({
+      empresa_id:empresaId,cliente_id:cliId,articulo_id:artId,articulo_nombre:artSel?.nombre||null,
+      cantidad:cant,precio_unitario:precio,total,forma_pago:fp,estado,pagado,saldo,
+      es_cuotas:fp==='cuenta_corriente'&&cuotas>1,cantidad_cuotas:cuotas,recargo_pct:recargo,
+      codigo_venta:codigo,notas,fecha_venta:fecha,es_carrito:false,
+    }).select('id').single();
+    if (error) throw error;
+    if (pagado>0&&vd?.id)
+      await sb.from('pagos').insert({empresa_id:empresaId,venta_id:vd.id,monto:pagado,fecha,notas:'Pago inicial'});
+    if (artSel)
+      await sb.from('articulos').update({stock:Math.max(0,(artSel.stock||0)-cant)}).eq('id',artId);
+    mostrarAlerta('Venta registrada ✓','exito');
+    cerrarModal('modalVenta');
     await cargarVentas();
-    iniciarFiltros();
-  })();
-
-  // ══════════════════════════════════════════════════════════
-  // PANEL RESUMEN / ARQUEO — toggle
-  // ══════════════════════════════════════════════════════════
-  let _panelActivo = null;
-
-  function togglePanel(panel) {
-    const panelResumen = document.getElementById('panelResumen');
-    const panelArqueo  = document.getElementById('panelArqueo');
-
-    if (_panelActivo === panel) {
-      // Cerrar
-      panelResumen.classList.remove('activo');
-      panelArqueo.classList.remove('activo');
-      _panelActivo = null;
-      return;
-    }
-    _panelActivo = panel;
-    panelResumen.classList.toggle('activo', panel === 'resumen');
-    panelArqueo.classList.toggle('activo', panel === 'arqueo');
-
-    if (panel === 'resumen') calcularResumen();
-    if (panel === 'arqueo')  cargarDatosArqueo();
-  }
-
-  // ══════════════════════════════════════════════════════════
-  // RESUMEN DE VENTAS
-  // ══════════════════════════════════════════════════════════
-  function selPeriodo(periodo, btn) {
-    _periodoActual = periodo;
-    document.querySelectorAll('.periodo-tab').forEach(b => b.classList.remove('activo'));
-    btn.classList.add('activo');
-    const rango = document.getElementById('periodoRango');
-    rango.classList.toggle('visible', periodo === 'rango');
-    if (periodo !== 'rango') calcularResumen();
-  }
-
-  function getRangoFechas() {
-    const hoy   = new Date();
-    let desde, hasta;
-    hasta = new Date(hoy); hasta.setHours(23,59,59,999);
-
-    switch (_periodoActual) {
-      case 'hoy':
-        desde = new Date(hoy); desde.setHours(0,0,0,0);
-        break;
-      case 'semana': {
-        const dia = hoy.getDay() || 7;
-        desde = new Date(hoy); desde.setDate(hoy.getDate() - dia + 1); desde.setHours(0,0,0,0);
-        break;
-      }
-      case 'quincena':
-        desde = new Date(hoy);
-        desde.setDate(hoy.getDate() <= 15 ? 1 : 16);
-        desde.setHours(0,0,0,0);
-        break;
-      case 'mes':
-        desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-        break;
-      case 'anio':
-        desde = new Date(hoy.getFullYear(), 0, 1);
-        break;
-      case 'rango': {
-        const d = document.getElementById('rangoDesde').value;
-        const h = document.getElementById('rangoHasta').value;
-        if (!d || !h) return null;
-        desde = new Date(d + 'T00:00:00');
-        hasta = new Date(h + 'T23:59:59');
-        break;
-      }
-    }
-    return { desde, hasta };
-  }
-
-  function labelPeriodo() {
-    const r = getRangoFechas();
-    if (!r) return '';
-    const opts = { day:'2-digit', month:'2-digit', year:'numeric' };
-    const f = d => d.toLocaleDateString('es-AR', opts);
-    if (_periodoActual === 'hoy') return `Hoy — ${f(r.desde)}`;
-    return `${f(r.desde)} al ${f(r.hasta)}`;
-  }
-
-  async function calcularResumen() {
-    const r = getRangoFechas();
-    if (!r) return;
-
-    document.getElementById('resumenContenido').innerHTML =
-      '<div class="cargando"><div class="spinner"></div><span>Calculando...</span></div>';
-
-    const { desde, hasta } = r;
-
-    // Ventas del período
-    const { data: ventas } = await sb.from('ventas').select('*,clientes(nombre)')
-      .eq('empresa_id', empresaId)
-      .gte('fecha_venta', desde.toISOString().split('T')[0])
-      .lte('fecha_venta', hasta.toISOString().split('T')[0]);
-
-    // Pagos cobrados del período (cobros de deudas)
-    const { data: pagos } = await sb.from('pagos').select('*,ventas(forma_pago,fecha_venta)')
-      .eq('empresa_id', empresaId)
-      .gte('fecha', desde.toISOString().split('T')[0])
-      .lte('fecha', hasta.toISOString().split('T')[0]);
-
-    const v = ventas || [];
-    const p = pagos  || [];
-
-    // Totales por forma de pago (ventas nuevas)
-    const tots = { efectivo:0, transferencia:0, tarjeta:0, cuenta_corriente:0 };
-    v.forEach(vt => { tots[vt.forma_pago] = (tots[vt.forma_pago]||0) + Number(vt.total||0); });
-    const totalVentas = Object.values(tots).reduce((s,x)=>s+x, 0);
-
-    // Cobros del período (pagos de deudas anteriores)
-    let totalCobros = 0;
-    const cobros = { efectivo:0, transferencia:0, tarjeta:0, cuenta_corriente:0 };
-    p.forEach(pg => {
-      const fp = pg.ventas?.forma_pago || 'efectivo';
-      cobros[fp] = (cobros[fp]||0) + Number(pg.monto||0);
-      totalCobros += Number(pg.monto||0);
-    });
-
-    // Guardar para exportar
-    _datosResumen = { ventas: v, pagos: p, tots, cobros, totalVentas, totalCobros, periodo: labelPeriodo() };
-
-    const COLS = [
-      { key:'efectivo',        label:'💵 Efectivo',        cls:'efectivo' },
-      { key:'transferencia',   label:'🏦 Transferencia',   cls:'transf'   },
-      { key:'tarjeta',         label:'💳 Tarjeta',         cls:'tarjeta'  },
-      { key:'cuenta_corriente',label:'📋 Cta. corriente',  cls:'cta'      },
-    ];
-
-    document.getElementById('resumenContenido').innerHTML = `
-      <div style="font-size:12px;font-weight:600;color:var(--texto-suave);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px">
-        📅 ${labelPeriodo()} · ${v.length} venta${v.length!==1?'s':''}
-      </div>
-
-      <div style="font-size:13px;font-weight:700;color:var(--texto);margin-bottom:8px">Ventas nuevas</div>
-      <div class="resumen-cards">
-        ${COLS.map(c=>`
-          <div class="resumen-card ${c.cls}">
-            <div class="resumen-card-label">${c.label}</div>
-            <div class="resumen-card-valor">${formatoPeso(tots[c.key])}</div>
-            <div class="resumen-card-sub">${v.filter(vt=>vt.forma_pago===c.key).length} venta${v.filter(vt=>vt.forma_pago===c.key).length!==1?'s':''}</div>
-          </div>`).join('')}
-        <div class="resumen-card gran-total">
-          <div class="resumen-card-label">TOTAL VENTAS</div>
-          <div class="resumen-card-valor" style="color:var(--azul-nav)">${formatoPeso(totalVentas)}</div>
-          <div class="resumen-card-sub">${v.length} venta${v.length!==1?'s':''} registradas</div>
-        </div>
-      </div>
-
-      <div class="seccion-cobros">
-        <div class="seccion-titulo">💳 Cobros del período <small class="texto-suave" style="font-weight:400">(pagos de deudas anteriores)</small></div>
-        <div class="resumen-cards">
-          ${COLS.map(c=>`
-            <div class="resumen-card ${c.cls}">
-              <div class="resumen-card-label">${c.label}</div>
-              <div class="resumen-card-valor">${formatoPeso(cobros[c.key])}</div>
-              <div class="resumen-card-sub">${p.filter(pg=>(pg.ventas?.forma_pago||'efectivo')===c.key).length} cobro${p.filter(pg=>(pg.ventas?.forma_pago||'efectivo')===c.key).length!==1?'s':''}</div>
-            </div>`).join('')}
-          <div class="resumen-card gran-total">
-            <div class="resumen-card-label">TOTAL COBROS</div>
-            <div class="resumen-card-valor" style="color:#0891b2">${formatoPeso(totalCobros)}</div>
-            <div class="resumen-card-sub">${p.length} cobro${p.length!==1?'s':''} registrados</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="seccion-cobros">
-        <div class="seccion-titulo">💰 Ingreso total del período</div>
-        <div style="background:var(--azul-nav);color:#fff;border-radius:var(--r-md);padding:16px;display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:13px;opacity:.85">Ventas nuevas + cobros de deudas</span>
-          <span style="font-size:24px;font-weight:800">${formatoPeso(totalVentas + totalCobros)}</span>
-        </div>
-      </div>
-
-      ${v.length ? `
-        <div class="seccion-cobros">
-          <div class="seccion-titulo">📋 Detalle de ventas</div>
-          <div class="tabla-contenedor">
-            <table class="tabla">
-              <thead><tr><th>Cód.</th><th>Fecha</th><th>Cliente</th><th>Artículo</th><th>F.Pago</th><th>Total</th><th>Saldo</th></tr></thead>
-              <tbody>
-                ${v.map(vt=>`<tr>
-                  <td><span class="badge-codigo">${vt.codigo_venta||'—'}</span></td>
-                  <td>${formatoFecha((vt.fecha_venta||vt.created_at)+'T12:00:00')}</td>
-                  <td>${vt.clientes?.nombre||'Cons. final'}</td>
-                  <td class="fw-600">${vt.articulo_nombre||'-'}</td>
-                  <td>${PAGO_LABEL[vt.forma_pago]||vt.forma_pago}</td>
-                  <td><b>${formatoPeso(vt.total)}</b></td>
-                  <td class="${Number(vt.saldo)>0?'texto-rojo':''}">${formatoPeso(vt.saldo)}</td>
-                </tr>`).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>` : ''}
-    `;
-  }
-
-  // ══════════════════════════════════════════════════════════
-  // EXPORTAR RESUMEN — PDF
-  // ══════════════════════════════════════════════════════════
-  function exportarResumenPDF() {
-    if (!_datosResumen) { mostrarAlerta('Generá el resumen primero', 'info'); return; }
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-    const W = 210; let y = 15;
-    const nombreEmpresa = empresa?.nombre || 'Stockia';
-
-    // ── Encabezado con logo ───────────────────────────────
-    doc.setFillColor(30, 58, 138);
-    doc.rect(0, 0, W, 28, 'F');
-    doc.setTextColor(255,255,255);
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(20);
-    doc.text('Stockia', 14, 12);
-    doc.setFontSize(9);
-    doc.setFont('helvetica','normal');
-    doc.text('Sistema de gestión de inventario', 14, 18);
-    doc.setFontSize(11);
-    doc.setFont('helvetica','bold');
-    doc.text(nombreEmpresa, W-14, 12, {align:'right'});
-    doc.setFontSize(8);
-    doc.setFont('helvetica','normal');
-    doc.text('Resumen de Ventas', W-14, 18, {align:'right'});
-    y = 36;
-
-    // ── Período ───────────────────────────────────────────
-    doc.setTextColor(30,58,138);
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(13);
-    doc.text(_datosResumen.periodo, 14, y); y += 6;
-    doc.setTextColor(100,100,100);
-    doc.setFont('helvetica','normal');
-    doc.setFontSize(9);
-    doc.text(`Generado: ${new Date().toLocaleString('es-AR')}`, 14, y); y += 10;
-
-    // ── Totales ventas ────────────────────────────────────
-    doc.setTextColor(30,30,30);
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(11);
-    doc.text('VENTAS NUEVAS', 14, y); y += 6;
-
-    const filasPago = [
-      ['💵 Efectivo',      formatoPeso(_datosResumen.tots.efectivo)],
-      ['🏦 Transferencia', formatoPeso(_datosResumen.tots.transferencia)],
-      ['💳 Tarjeta',       formatoPeso(_datosResumen.tots.tarjeta)],
-      ['📋 Cta. corriente',formatoPeso(_datosResumen.tots.cuenta_corriente)],
-      ['TOTAL VENTAS',     formatoPeso(_datosResumen.totalVentas)],
-    ];
-    filasPago.forEach(([label, valor], i) => {
-      const esTotal = i === filasPago.length - 1;
-      if (esTotal) { doc.setFillColor(30,58,138); doc.rect(14,y-4,W-28,7,'F'); doc.setTextColor(255,255,255); }
-      else          { doc.setFillColor(i%2?248:255,i%2?250:255,i%2?255:255); doc.rect(14,y-4,W-28,7,'F'); doc.setTextColor(30,30,30); }
-      doc.setFont('helvetica', esTotal?'bold':'normal');
-      doc.setFontSize(9);
-      doc.text(label, 18, y);
-      doc.text(valor, W-18, y, {align:'right'});
-      y += 7;
-    });
-    y += 6;
-
-    // ── Cobros ────────────────────────────────────────────
-    doc.setTextColor(30,30,30);
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(11);
-    doc.text('COBROS DEL PERÍODO (deudas anteriores)', 14, y); y += 6;
-
-    const filasCobros = [
-      ['💵 Efectivo',      formatoPeso(_datosResumen.cobros.efectivo)],
-      ['🏦 Transferencia', formatoPeso(_datosResumen.cobros.transferencia)],
-      ['💳 Tarjeta',       formatoPeso(_datosResumen.cobros.tarjeta)],
-      ['📋 Cta. corriente',formatoPeso(_datosResumen.cobros.cuenta_corriente)],
-      ['TOTAL COBROS',     formatoPeso(_datosResumen.totalCobros)],
-    ];
-    filasCobros.forEach(([label, valor], i) => {
-      const esTotal = i === filasCobros.length - 1;
-      if (esTotal) { doc.setFillColor(8,145,178); doc.rect(14,y-4,W-28,7,'F'); doc.setTextColor(255,255,255); }
-      else          { doc.setFillColor(i%2?248:255,i%2?250:255,i%2?255:255); doc.rect(14,y-4,W-28,7,'F'); doc.setTextColor(30,30,30); }
-      doc.setFont('helvetica', esTotal?'bold':'normal');
-      doc.setFontSize(9);
-      doc.text(label, 18, y);
-      doc.text(valor, W-18, y, {align:'right'});
-      y += 7;
-    });
-    y += 6;
-
-    // ── Ingreso total ─────────────────────────────────────
-    doc.setFillColor(16,185,129);
-    doc.rect(14, y-4, W-28, 10, 'F');
-    doc.setTextColor(255,255,255);
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(12);
-    doc.text('INGRESO TOTAL DEL PERÍODO', 18, y+2);
-    doc.text(formatoPeso(_datosResumen.totalVentas + _datosResumen.totalCobros), W-18, y+2, {align:'right'});
-    y += 16;
-
-    // ── Detalle de ventas ─────────────────────────────────
-    if (_datosResumen.ventas.length && y < 220) {
-      doc.setTextColor(30,30,30);
-      doc.setFont('helvetica','bold');
-      doc.setFontSize(10);
-      doc.text('DETALLE DE VENTAS', 14, y); y += 6;
-
-      // Cabecera tabla
-      doc.setFillColor(30,58,138);
-      doc.rect(14,y-4,W-28,7,'F');
-      doc.setTextColor(255,255,255);
-      doc.setFontSize(8);
-      ['Cód.','Fecha','Cliente','Artículo','F.Pago','Total','Saldo'].forEach((h,i) => {
-        const xs = [18,35,60,100,135,162,185];
-        doc.text(h, xs[i], y);
-      });
-      y += 7;
-
-      _datosResumen.ventas.forEach((vt,i) => {
-        if (y > 270) { doc.addPage(); y = 20; }
-        doc.setFillColor(i%2?248:255,i%2?250:255,i%2?255:255);
-        doc.rect(14,y-4,W-28,7,'F');
-        doc.setTextColor(30,30,30);
-        doc.setFont('helvetica','normal');
-        doc.setFontSize(7);
-        const xs = [18,35,60,100,135,162,185];
-        const row = [
-          (vt.codigo_venta||'—').substring(0,8),
-          formatoFecha((vt.fecha_venta||vt.created_at)+'T12:00:00'),
-          (vt.clientes?.nombre||'Cons.final').substring(0,18),
-          (vt.articulo_nombre||'-').substring(0,20),
-          (PAGO_LABEL[vt.forma_pago]||vt.forma_pago).replace(/[^\w\s]/g,'').trim().substring(0,10),
-          formatoPeso(vt.total).substring(0,12),
-          formatoPeso(vt.saldo).substring(0,12),
-        ];
-        row.forEach((v,j) => doc.text(v, xs[j], y));
-        y += 7;
-      });
-    }
-
-    // ── Pie de página ──────────────────────────────────────
-    const totalPags = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= totalPags; i++) {
-      doc.setPage(i);
-      doc.setFontSize(7); doc.setTextColor(150,150,150);
-      doc.text(`Stockia · ${nombreEmpresa} · Pág. ${i}/${totalPags}`, W/2, 290, {align:'center'});
-    }
-
-    doc.save(`stockia-resumen-${hoyISO()}.pdf`);
-    mostrarAlerta('PDF generado ✓', 'exito');
-  }
-
-  // ══════════════════════════════════════════════════════════
-  // EXPORTAR RESUMEN — EXCEL
-  // ══════════════════════════════════════════════════════════
-  function exportarResumenExcel() {
-    if (!_datosResumen) { mostrarAlerta('Generá el resumen primero', 'info'); return; }
-    const wb = XLSX.utils.book_new();
-    const nombreEmpresa = empresa?.nombre || 'Stockia';
-
-    // Hoja 1: Resumen
-    const resumenData = [
-      [`Stockia · ${nombreEmpresa}`],
-      [`Resumen de ventas: ${_datosResumen.periodo}`],
-      [`Generado: ${new Date().toLocaleString('es-AR')}`],
-      [],
-      ['VENTAS NUEVAS'],
-      ['Forma de pago','Total'],
-      ['Efectivo',       _datosResumen.tots.efectivo],
-      ['Transferencia',  _datosResumen.tots.transferencia],
-      ['Tarjeta',        _datosResumen.tots.tarjeta],
-      ['Cuenta corriente',_datosResumen.tots.cuenta_corriente],
-      ['TOTAL VENTAS',   _datosResumen.totalVentas],
-      [],
-      ['COBROS DEL PERÍODO'],
-      ['Forma de pago','Total'],
-      ['Efectivo',       _datosResumen.cobros.efectivo],
-      ['Transferencia',  _datosResumen.cobros.transferencia],
-      ['Tarjeta',        _datosResumen.cobros.tarjeta],
-      ['Cuenta corriente',_datosResumen.cobros.cuenta_corriente],
-      ['TOTAL COBROS',   _datosResumen.totalCobros],
-      [],
-      ['INGRESO TOTAL DEL PERÍODO', _datosResumen.totalVentas + _datosResumen.totalCobros],
-    ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumenData), 'Resumen');
-
-    // Hoja 2: Detalle ventas
-    if (_datosResumen.ventas.length) {
-      const detData = [
-        ['Código','Fecha','Cliente','Artículo','Forma Pago','Total','Pagado','Saldo','Estado'],
-        ..._datosResumen.ventas.map(v=>[
-          v.codigo_venta||'',
-          v.fecha_venta||v.created_at?.split('T')[0],
-          v.clientes?.nombre||'Consumidor final',
-          v.articulo_nombre||'',
-          v.forma_pago,
-          Number(v.total||0),
-          Number(v.pagado||0),
-          Number(v.saldo||0),
-          v.estado,
-        ])
-      ];
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detData), 'Ventas');
-    }
-
-    // Hoja 3: Cobros
-    if (_datosResumen.pagos.length) {
-      const cobData = [
-        ['Fecha cobro','Monto','Notas'],
-        ..._datosResumen.pagos.map(p=>[p.fecha, Number(p.monto||0), p.notas||''])
-      ];
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cobData), 'Cobros');
-    }
-
-    XLSX.writeFile(wb, `stockia-resumen-${hoyISO()}.xlsx`);
-    mostrarAlerta('Excel generado ✓', 'exito');
-  }
-
-  // ══════════════════════════════════════════════════════════
-  // ARQUEO DE CAJA
-  // ══════════════════════════════════════════════════════════
-  async function cargarDatosArqueo() {
-    document.getElementById('arqueoSistema').innerHTML =
-      '<div class="cargando"><div class="spinner"></div><span>Calculando...</span></div>';
-
-    const turno   = document.getElementById('arqueoTurno')?.value || 'diario';
-    const hoy     = hoyISO();
-    let desdeHora = '00:00:00', hastaHora = '23:59:59';
-    if (turno === 'mañana') hastaHora = '13:00:00';
-    if (turno === 'tarde')  desdeHora = '13:00:01';
-
-    const desde = `${hoy}T${desdeHora}`;
-    const hasta  = `${hoy}T${hastaHora}`;
-
-    // Ventas en efectivo del turno
-    const { data: ventas } = await sb.from('ventas').select('total,forma_pago,estado,pagado,saldo,codigo_venta,articulo_nombre')
-      .eq('empresa_id', empresaId)
-      .eq('fecha_venta', hoy);
-
-    // Cobros en efectivo del turno (pagos de deudas)
-    const { data: cobros } = await sb.from('pagos').select('monto,fecha,notas,ventas(forma_pago)')
-      .eq('empresa_id', empresaId)
-      .eq('fecha', hoy);
-
-    const v = ventas || [];
-    const c = cobros || [];
-
-    const efectivoVentas = v.filter(vt=>vt.forma_pago==='efectivo').reduce((s,vt)=>s+Number(vt.total||0),0);
-    const transfVentas   = v.filter(vt=>vt.forma_pago==='transferencia').reduce((s,vt)=>s+Number(vt.total||0),0);
-    const tarjetaVentas  = v.filter(vt=>vt.forma_pago==='tarjeta').reduce((s,vt)=>s+Number(vt.total||0),0);
-    const ctaVentas      = v.filter(vt=>vt.forma_pago==='cuenta_corriente').reduce((s,vt)=>s+Number(vt.total||0),0);
-    const efectivoCobros = c.filter(p=>(p.ventas?.forma_pago||'efectivo')==='efectivo').reduce((s,p)=>s+Number(p.monto||0),0);
-    const totalEfectivoSistema = efectivoVentas + efectivoCobros;
-
-    document.getElementById('arqueoSistema').innerHTML = `
-      <div class="arqueo-seccion">
-        <div style="font-size:12px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">
-          📅 ${new Date().toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'long'})}
-          ${turno!=='diario'?` · Turno ${turno}`:''}
-        </div>
-
-        <div class="resumen-cards">
-          <div class="resumen-card efectivo">
-            <div class="resumen-card-label">💵 Efectivo (ventas)</div>
-            <div class="resumen-card-valor">${formatoPeso(efectivoVentas)}</div>
-            <div class="resumen-card-sub">${v.filter(vt=>vt.forma_pago==='efectivo').length} ventas</div>
-          </div>
-          <div class="resumen-card transf">
-            <div class="resumen-card-label">🏦 Transferencia</div>
-            <div class="resumen-card-valor">${formatoPeso(transfVentas)}</div>
-          </div>
-          <div class="resumen-card tarjeta">
-            <div class="resumen-card-label">💳 Tarjeta</div>
-            <div class="resumen-card-valor">${formatoPeso(tarjetaVentas)}</div>
-          </div>
-          <div class="resumen-card cta">
-            <div class="resumen-card-label">📋 Cta. corriente</div>
-            <div class="resumen-card-valor">${formatoPeso(ctaVentas)}</div>
-          </div>
-          <div class="resumen-card cobros">
-            <div class="resumen-card-label">💳 Cobros efectivo</div>
-            <div class="resumen-card-valor">${formatoPeso(efectivoCobros)}</div>
-            <div class="resumen-card-sub">${c.length} cobro${c.length!==1?'s':''}</div>
-          </div>
-          <div class="resumen-card gran-total">
-            <div class="resumen-card-label">💵 EFECTIVO TOTAL EN CAJA (sistema)</div>
-            <div class="resumen-card-valor">${formatoPeso(totalEfectivoSistema)}</div>
-            <div class="resumen-card-sub">Ventas + cobros en efectivo</div>
-          </div>
-        </div>
-      </div>
-    `;
-
-    // Sección conteo físico
-    const registraFisico = _configFunciones.arqueo_registra_fisico !== false;
-    const secFisico = document.getElementById('arqueoFisicoSection');
-    secFisico.style.display = registraFisico ? 'block' : 'none';
-
-    if (registraFisico) {
-      // Generar grilla de billetes
-      const billetesGrid = document.getElementById('billetesGrid');
-      billetesGrid.innerHTML = BILLETES.map(b => `
-        <div class="billete-item">
-          <div class="billete-label">$ ${b >= 1000 ? (b/1000)+'K' : b}</div>
-          <input type="number" class="billete-input" id="bill_${b}" value="0" min="0"
-            oninput="actualizarConteo()" placeholder="0">
-          <div class="billete-subtotal" id="sub_${b}">= $0</div>
-        </div>
-      `).join('');
-
-      // Guardar total sistema para comparar
-      document.getElementById('arqueoFisicoSection').dataset.totalSistema = totalEfectivoSistema;
-      actualizarConteo();
-    }
-
-    // Historial
-    await cargarHistorialArqueos();
-  }
-
-  function actualizarConteo() {
-    let totalContado = 0;
-    BILLETES.forEach(b => {
-      const cant = parseInt(document.getElementById('bill_'+b)?.value)||0;
-      const sub  = cant * b;
-      totalContado += sub;
-      const el = document.getElementById('sub_'+b);
-      if (el) el.textContent = `= ${formatoPeso(sub)}`;
-    });
-
-    const totalSistema = parseFloat(document.getElementById('arqueoFisicoSection').dataset.totalSistema||0);
-    const diferencia   = totalContado - totalSistema;
-    const esOk         = Math.abs(diferencia) < 1;
-
-    document.getElementById('arqueoComparacion').innerHTML = `
-      <div class="arqueo-box sistema">
-        <div class="arqueo-box-label">Sistema dice</div>
-        <div class="arqueo-box-valor" style="color:var(--azul-accion)">${formatoPeso(totalSistema)}</div>
-      </div>
-      <div class="arqueo-box contado">
-        <div class="arqueo-box-label">Contado físico</div>
-        <div class="arqueo-box-valor" style="color:var(--verde)">${formatoPeso(totalContado)}</div>
-      </div>
-      <div class="arqueo-box ${esOk?'diferencia-ok':'diferencia-mal'}">
-        <div class="arqueo-box-label">${esOk?'✓ Cierra':'⚠ Diferencia'}</div>
-        <div class="arqueo-box-valor" style="color:${esOk?'var(--verde)':'var(--rojo)'}">
-          ${diferencia>=0?'+':''}${formatoPeso(diferencia)}
-        </div>
-        <div style="font-size:11px;color:var(--texto-suave);margin-top:2px">
-          ${esOk?'Todo cuadra':'Revisá el conteo'}
-        </div>
-      </div>
-    `;
-  }
-
-  async function guardarArqueo() {
-    const totalSistema = parseFloat(document.getElementById('arqueoFisicoSection').dataset.totalSistema||0);
-    let totalContado = 0;
-    const detalleBilletes = {};
-    BILLETES.forEach(b => {
-      const cant = parseInt(document.getElementById('bill_'+b)?.value)||0;
-      if (cant > 0) detalleBilletes[b] = cant;
-      totalContado += cant * b;
-    });
-
-    const hoy   = hoyISO();
-    const turno = document.getElementById('arqueoTurno')?.value || 'diario';
-    const notas = document.getElementById('arqueoNotas')?.value.trim() || null;
-
-    // Calcular todos los totales para guardar
-    const { data: ventas } = await sb.from('ventas').select('total,forma_pago')
-      .eq('empresa_id', empresaId).eq('fecha_venta', hoy);
-    const { data: cobros } = await sb.from('pagos').select('monto,ventas(forma_pago)')
-      .eq('empresa_id', empresaId).eq('fecha', hoy);
-
-    const v = ventas||[], c = cobros||[];
-    const tots = {
-      efectivo:    v.filter(x=>x.forma_pago==='efectivo').reduce((s,x)=>s+Number(x.total),0),
-      transferencia: v.filter(x=>x.forma_pago==='transferencia').reduce((s,x)=>s+Number(x.total),0),
-      tarjeta:     v.filter(x=>x.forma_pago==='tarjeta').reduce((s,x)=>s+Number(x.total),0),
-      cta:         v.filter(x=>x.forma_pago==='cuenta_corriente').reduce((s,x)=>s+Number(x.total),0),
-    };
-    const totalCobros = c.reduce((s,p)=>s+Number(p.monto),0);
-
-    const { error } = await sb.from('arqueos').insert({
-      empresa_id:              empresaId,
-      turno,
-      fecha:                   hoy,
-      periodo_desde:           `${hoy}T00:00:00`,
-      periodo_hasta:           `${hoy}T23:59:59`,
-      total_efectivo_sistema:  totalSistema,
-      total_transferencia:     tots.transferencia,
-      total_tarjeta:           tots.tarjeta,
-      total_cuenta_corriente:  tots.cta,
-      total_ventas_sistema:    v.reduce((s,x)=>s+Number(x.total),0),
-      total_cobros_sistema:    totalCobros,
-      efectivo_contado:        totalContado,
-      diferencia:              totalContado - totalSistema,
-      detalle_billetes:        detalleBilletes,
-      notas,
-    });
-
-    if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
-    mostrarAlerta('Arqueo guardado ✓', 'exito');
-    BILLETES.forEach(b => { const el = document.getElementById('bill_'+b); if(el) el.value = '0'; });
-    if (document.getElementById('arqueoNotas')) document.getElementById('arqueoNotas').value = '';
-    actualizarConteo();
-    await cargarHistorialArqueos();
-  }
-
-  async function cargarHistorialArqueos() {
-    const { data } = await sb.from('arqueos').select('*')
-      .eq('empresa_id', empresaId)
-      .order('created_at', {ascending:false})
-      .limit(5);
-
-    const hist = document.getElementById('historialArqueos');
-    const lista = document.getElementById('listaArqueos');
-    if (!data?.length) { hist.style.display='none'; return; }
-    hist.style.display = 'block';
-
-    lista.innerHTML = data.map(a => {
-      const dif = Number(a.diferencia||0);
-      const esCuadrado = Math.abs(dif) < 1;
-      return `
-        <div class="arqueo-historial-item">
-          <div>
-            <div style="font-size:13px;font-weight:700">${formatoFecha(a.fecha+'T12:00:00')} · ${a.turno}</div>
-            <div style="font-size:11px;color:var(--texto-suave)">
-              Sistema: ${formatoPeso(a.total_efectivo_sistema)} · Contado: ${formatoPeso(a.efectivo_contado)}
-              ${a.notas?` · ${a.notas}`:''}
-            </div>
-          </div>
-          <span class="badge ${esCuadrado?'badge-verde':'badge-rojo'}">
-            ${dif>=0?'+':''}${formatoPeso(dif)}
-          </span>
-        </div>`;
-    }).join('');
-  }
-
-  async function exportarArqueoPDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-    const W = 210; let y = 15;
-    const nombreEmpresa = empresa?.nombre || 'Stockia';
-
-    doc.setFillColor(16,185,129);
-    doc.rect(0,0,W,28,'F');
-    doc.setTextColor(255,255,255);
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(20);
-    doc.text('Stockia', 14, 12);
-    doc.setFontSize(9);
-    doc.setFont('helvetica','normal');
-    doc.text('Sistema de gestión de inventario', 14, 18);
-    doc.setFontSize(11);
-    doc.setFont('helvetica','bold');
-    doc.text(nombreEmpresa, W-14, 12, {align:'right'});
-    doc.setFontSize(8);
-    doc.text('Arqueo de Caja', W-14, 18, {align:'right'});
-    y = 36;
-
-    doc.setTextColor(30,30,30);
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(13);
-    doc.text(`Arqueo — ${new Date().toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})}`, 14, y); y += 12;
-
-    doc.setFontSize(9);
-    doc.text(`Generado: ${new Date().toLocaleString('es-AR')}`, 14, y); y += 10;
-
-    doc.save(`stockia-arqueo-${hoyISO()}.pdf`);
-    mostrarAlerta('PDF de arqueo generado ✓', 'exito');
-  }
-
-  // ══════════════════════════════════════════════════════════
-  // VENTAS — todo igual que v4.1
-  // ══════════════════════════════════════════════════════════
-  async function cargarArticulosSelect() {
-    const {data} = await sb.from('articulos').select('id,nombre,precio,stock').eq('empresa_id',empresaId).eq('activo',true).order('nombre');
-    articulos = data||[];
-    document.getElementById('ventaArticulo').innerHTML = `<option value="">— Seleccioná —</option>` +
-      articulos.map(a=>`<option value="${a.id}" data-precio="${a.precio}">${a.nombre} (stock: ${a.stock})</option>`).join('');
-  }
-
-  async function cargarClientesSelect() {
-    const {data} = await sb.from('clientes').select('id,nombre,codigo').eq('empresa_id',empresaId).eq('activo',true).order('nombre');
-    clientes = data||[];
-    document.getElementById('ventaCliente').innerHTML = `<option value="">— Consumidor final —</option>` +
+    await cargarArticulosSelect();
+  } catch(err){ mostrarAlerta('Error: '+err.message,'error'); }
+  finally { btn.disabled=false; btn.textContent='✓ Registrar venta'; }
+}
+
+// ════════════════════════════════════════════════════════════
+// MODO KIOSCO — carrito multi-artículo
+// ════════════════════════════════════════════════════════════
+async function abrirCarrito() {
+  _carrito = [];
+  document.getElementById('carrFecha').value  = hoyISO();
+  document.getElementById('carrBusqueda').value = '';
+  document.getElementById('carrResultados').style.display = 'none';
+  document.getElementById('carrNotas').value  = '';
+  document.getElementById('carrFormaPago').value = 'efectivo';
+  document.getElementById('carrCodigo').value = '';
+  document.getElementById('carrErrCodigo').classList.remove('visible');
+
+  // Mostrar selector de cliente si módulo activo
+  const grpCli = document.getElementById('grupoClienteCarrito');
+  grpCli.style.display = tieneClientes ? 'block' : 'none';
+  if (tieneClientes) {
+    document.getElementById('carrCliente').value = '';
+    // Reusar la misma lista de clientes ya cargada
+    document.getElementById('carrCliente').innerHTML =
+      `<option value="">— Consumidor final —</option>` +
       clientes.map(c=>`<option value="${c.id}">${c.nombre}${c.codigo?' #'+c.codigo:''}</option>`).join('');
   }
 
-  async function cargarVentas() {
-    document.getElementById('tablaVentas').innerHTML = '<tr><td colspan="8"><div class="cargando"><div class="spinner"></div></div></td></tr>';
-    const {data,error} = await sb.from('ventas').select('*,clientes(nombre,codigo)')
-      .eq('empresa_id',empresaId)
-      .order('fecha_venta',{ascending:false})
-      .order('created_at',{ascending:false});
-    if (error) { document.getElementById('tablaVentas').innerHTML=`<tr><td colspan="8"><div class="estado-vacio"><div class="estado-vacio-icono">⚠️</div><div class="estado-vacio-titulo">Error: ${error.message}</div></div></td></tr>`; return; }
-    todasVentas = data||[];
-    aplicarFiltros();
-  }
+  const sig = await siguienteCodigo('venta', empresaId);
+  const sug = document.getElementById('carrCodigoSugerido');
+  sug.textContent = `Sugerido: N° ${sig} (click para usar)`;
+  sug.dataset.valor = sig;
 
-  function aplicarFiltros() {
-    const q=document.getElementById('filtroQ').value.toLowerCase();
-    const estado=document.getElementById('filtroEstado').value;
-    const pago=document.getElementById('filtroPago').value;
-    let lista=todasVentas;
-    if(q) lista=lista.filter(v=>(v.clientes?.nombre||'').toLowerCase().includes(q)||(v.articulo_nombre||'').toLowerCase().includes(q)||(v.codigo_venta||'').includes(q));
-    if(estado) lista=lista.filter(v=>v.estado===estado);
-    if(pago)   lista=lista.filter(v=>v.forma_pago===pago);
-    document.getElementById('svTotal').textContent=formatoPeso(lista.reduce((s,v)=>s+Number(v.total||0),0));
-    document.getElementById('svDeuda').textContent=formatoPeso(lista.reduce((s,v)=>s+Number(v.saldo||0),0));
-    renderTabla(lista);
-  }
+  renderCarrito();
+  abrirModal('modalCarrito');
+  document.getElementById('carrBusqueda').focus();
+}
 
-  function iniciarFiltros() {
-    ['filtroQ','filtroEstado','filtroPago'].forEach(id=>{
-      document.getElementById(id).addEventListener('input',aplicarFiltros);
-      document.getElementById(id).addEventListener('change',aplicarFiltros);
+// Filtrar artículos mientras escribe
+function filtrarArticulosCarrito() {
+  const q = document.getElementById('carrBusqueda').value.toLowerCase().trim();
+  const res = document.getElementById('carrResultados');
+  if (!q) { res.style.display='none'; return; }
+
+  const matches = articulos.filter(a =>
+    a.nombre.toLowerCase().includes(q) ||
+    (a.codigo||'').toLowerCase().includes(q)
+  ).slice(0, 8);
+
+  if (!matches.length) { res.style.display='none'; return; }
+
+  res.style.display = 'block';
+  res.innerHTML = matches.map(a => `
+    <div onclick="agregarAlCarrito('${a.id}')"
+      style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--borde);display:flex;justify-content:space-between;align-items:center"
+      onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='#fff'">
+      <div>
+        <div style="font-size:13px;font-weight:600">${a.nombre}</div>
+        <div style="font-size:11px;color:var(--texto-suave)">Stock: ${a.stock} · ${formatoPeso(a.precio)}</div>
+      </div>
+      <span style="font-size:18px;color:var(--verde)">＋</span>
+    </div>
+  `).join('');
+}
+
+function agregarAlCarrito(artId) {
+  const art = articulos.find(a => a.id === artId);
+  if (!art) return;
+
+  // Si ya está en el carrito, incrementar cantidad
+  const existente = _carrito.find(i => i.articuloId === artId);
+  if (existente) {
+    if (existente.cantidad >= art.stock) {
+      mostrarAlerta(`Stock disponible: ${art.stock}`, 'info'); return;
+    }
+    existente.cantidad++;
+    existente.subtotal = existente.cantidad * existente.precio;
+  } else {
+    if (art.stock <= 0) {
+      mostrarAlerta(`Sin stock disponible`, 'info'); return;
+    }
+    _carrito.push({
+      articuloId:     art.id,
+      articuloNombre: art.nombre,
+      cantidad:       1,
+      precio:         Number(art.precio),
+      subtotal:       Number(art.precio),
+      stockMax:       art.stock,
     });
   }
 
-  function renderTabla(lista) {
-    const tbody=document.getElementById('tablaVentas');
-    if(!lista.length){ tbody.innerHTML=`<tr><td colspan="8"><div class="estado-vacio"><div class="estado-vacio-icono">💰</div><div class="estado-vacio-titulo">Sin ventas</div><button class="btn btn-acento" onclick="abrirNuevaVenta()">➕ Nueva Venta</button></div></td></tr>`; return; }
-    tbody.innerHTML=lista.map(v=>{
-      const clienteCol=(kiosco&&!tieneClientes)?'':
-        `<td>${v.clientes?`${v.clientes.nombre}${v.clientes.codigo?` <span class="badge-codigo">${v.clientes.codigo}</span>`:''}`:'<span class="texto-suave">Cons. final</span>'}</td>`;
-      const fechaMostrar=v.fecha_venta?formatoFecha(v.fecha_venta+'T12:00:00'):formatoFecha(v.created_at);
-      return `<tr>
-        <td><span class="badge-codigo">${v.codigo_venta||'—'}</span></td>
-        <td style="white-space:nowrap">${fechaMostrar}</td>
-        ${clienteCol}
-        <td class="fw-600">${v.articulo_nombre||'-'}${v.cantidad>1?` <span class="badge badge-gris">x${v.cantidad}</span>`:''}</td>
-        <td><b>${formatoPeso(v.total)}</b></td>
-        <td class="${Number(v.saldo)>0?'texto-rojo fw-600':'texto-suave'}">${formatoPeso(v.saldo)}</td>
-        <td><span class="badge ${v.estado==='pagado'?'badge-verde':v.estado==='parcial'?'badge-naranja':'badge-rojo'}">${v.estado}</span></td>
-        <td><div class="tabla-acciones">
-          <button class="btn btn-sm btn-ghost" onclick="abrirDetalleVenta('${v.id}')" title="Pagos">📋</button>
-          <button class="btn btn-sm btn-ghost" onclick="abrirEditarVenta('${v.id}')" title="Editar">✏️</button>
-          ${Number(v.saldo)>0?`<button class="btn btn-sm btn-secundario" onclick="abrirPago('${v.id}',${v.saldo})">💵</button>`:''}
-          ${esAdmin?`<button class="btn btn-sm btn-peligro" onclick="confirmarEliminarVenta('${v.id}','${(v.articulo_nombre||'esta venta').replace(/'/g,"\\'")}')">🗑️</button>`:''}
-        </div></td>
-      </tr>`;
-    }).join('');
+  document.getElementById('carrBusqueda').value = '';
+  document.getElementById('carrResultados').style.display = 'none';
+  renderCarrito();
+  document.getElementById('carrBusqueda').focus();
+}
+
+function cambiarCantidadCarrito(artId, delta) {
+  const item = _carrito.find(i => i.articuloId === artId);
+  if (!item) return;
+  const nueva = item.cantidad + delta;
+  if (nueva <= 0) {
+    quitarDelCarrito(artId); return;
+  }
+  if (nueva > item.stockMax) {
+    mostrarAlerta(`Stock máximo: ${item.stockMax}`, 'info'); return;
+  }
+  item.cantidad = nueva;
+  item.subtotal = nueva * item.precio;
+  renderCarrito();
+}
+
+function quitarDelCarrito(artId) {
+  _carrito = _carrito.filter(i => i.articuloId !== artId);
+  renderCarrito();
+}
+
+function renderCarrito() {
+  const tbody = document.getElementById('carrItems');
+  const totalBar = document.getElementById('carrTotalBar');
+
+  if (!_carrito.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="carrito-vacio">Sin artículos todavía.<br>Buscá uno arriba para agregarlo.</td></tr>`;
+    totalBar.style.display = 'none';
+    return;
   }
 
-  async function abrirNuevaVenta() {
-    document.getElementById('ventaId').value='';
-    document.getElementById('ventaFecha').value=hoyISO();
-    document.getElementById('ventaArticulo').value='';
-    document.getElementById('ventaCliente').value='';
-    document.getElementById('ventaCantidad').value='1';
-    document.getElementById('ventaPrecio').value='';
-    document.getElementById('ventaFormaPago').value='efectivo';
-    document.getElementById('ventaCuotas').value='1';
-    document.getElementById('ventaRecargo').value='0';
-    document.getElementById('ventaPagado').value='0';
-    document.getElementById('ventaNotas').value='';
-    document.getElementById('ventaCodigo').value='';
-    document.getElementById('seccionCuotas').style.display='none';
-    document.getElementById('modalVentaTitulo').textContent='➕ Nueva Venta';
-    limpiarErrorCodigoVenta();
-    const sig=await siguienteCodigo('venta',empresaId);
-    const sug=document.getElementById('ventaCodigoSugerido');
-    sug.textContent=`Sugerido: N° ${sig} (click para usar)`;
-    sug.dataset.valor=sig;
-    calcularTotal();
-    abrirModal('modalVenta');
+  const totalGeneral = _carrito.reduce((s,i) => s+i.subtotal, 0);
+  tbody.innerHTML = _carrito.map(item => `
+    <tr>
+      <td class="fw-600">${item.articuloNombre}</td>
+      <td>
+        <div class="cant-control">
+          <button class="cant-btn" onclick="cambiarCantidadCarrito('${item.articuloId}',-1)">−</button>
+          <span class="cant-num">${item.cantidad}</span>
+          <button class="cant-btn" onclick="cambiarCantidadCarrito('${item.articuloId}',1)">＋</button>
+        </div>
+      </td>
+      <td>${formatoPeso(item.precio)}</td>
+      <td><b>${formatoPeso(item.subtotal)}</b></td>
+      <td>
+        <button class="btn btn-sm btn-peligro" onclick="quitarDelCarrito('${item.articuloId}')" title="Quitar">✕</button>
+      </td>
+    </tr>
+  `).join('');
+
+  totalBar.style.display = 'flex';
+  document.getElementById('carrTotal').textContent = formatoPeso(totalGeneral);
+}
+
+function usarSugeridoCarrito() {
+  const s = document.getElementById('carrCodigoSugerido');
+  if (s?.dataset?.valor) document.getElementById('carrCodigo').value = s.dataset.valor;
+}
+function limpiarErrCarrCodigo() {
+  document.getElementById('carrErrCodigo')?.classList.remove('visible');
+}
+
+async function guardarCarrito() {
+  if (!_carrito.length) { mostrarAlerta('Agregá al menos un artículo', 'error'); return; }
+
+  const fecha  = document.getElementById('carrFecha').value || hoyISO();
+  const fp     = document.getElementById('carrFormaPago').value;
+  const notas  = document.getElementById('carrNotas').value.trim()||null;
+  const cliId  = tieneClientes ? (document.getElementById('carrCliente').value||null) : null;
+  const codigo = document.getElementById('carrCodigo').value.trim()||null;
+
+  if (codigo) {
+    const unico = await codigoEsUnico('ventas','codigo_venta',codigo,empresaId,null);
+    if (!unico) { document.getElementById('carrErrCodigo').classList.add('visible'); return; }
   }
 
-  function actualizarPrecio() {
-    const sel=document.getElementById('ventaArticulo');
-    const precio=sel.options[sel.selectedIndex]?.dataset?.precio;
-    if(precio) document.getElementById('ventaPrecio').value=precio;
-    calcularTotal();
-  }
-  function toggleCuotas() {
-    document.getElementById('seccionCuotas').style.display=document.getElementById('ventaFormaPago').value==='cuenta_corriente'?'block':'none';
-    calcularTotal();
-  }
-  function calcularTotal() {
-    const cant=parseFloat(document.getElementById('ventaCantidad').value)||1;
-    const precio=parseFloat(document.getElementById('ventaPrecio').value)||0;
-    const recargo=parseFloat(document.getElementById('ventaRecargo').value)||0;
-    const pagado=parseFloat(document.getElementById('ventaPagado').value)||0;
-    const sub=cant*precio, monRec=sub*(recargo/100), total=sub+monRec, saldo=Math.max(0,total-pagado);
-    document.getElementById('rSubtotal').textContent=formatoPeso(sub);
-    document.getElementById('rRecargo').textContent=formatoPeso(monRec);
-    document.getElementById('rTotal').textContent=formatoPeso(total);
-    document.getElementById('rPagado').textContent=formatoPeso(pagado);
-    document.getElementById('rSaldo').textContent=formatoPeso(saldo);
-  }
+  const total = _carrito.reduce((s,i) => s+i.subtotal, 0);
+  // En kiosco siempre se paga al momento (no deuda)
+  const estado = 'pagado';
 
-  async function guardarVenta() {
-    const artId=document.getElementById('ventaArticulo').value;
-    const codigo=document.getElementById('ventaCodigo').value.trim()||null;
-    const fecha=document.getElementById('ventaFecha').value||hoyISO();
-    const precio=parseFloat(document.getElementById('ventaPrecio').value)||0;
-    const cant=parseInt(document.getElementById('ventaCantidad').value)||1;
-    const recargo=parseFloat(document.getElementById('ventaRecargo').value)||0;
-    const pagado=parseFloat(document.getElementById('ventaPagado').value)||0;
-    const cuotas=parseInt(document.getElementById('ventaCuotas').value)||1;
-    const fp=document.getElementById('ventaFormaPago').value;
-    const cliId=document.getElementById('ventaCliente').value||null;
-    const notas=document.getElementById('ventaNotas').value.trim()||null;
-    if(!artId){mostrarAlerta('Seleccioná un artículo','error');return;}
-    if(!precio){mostrarAlerta('El precio no puede ser 0','error');return;}
-    if(codigo){const unico=await codigoEsUnico('ventas','codigo_venta',codigo,empresaId,null);if(!unico){document.getElementById('ventaErrCodigo').classList.add('visible');return;}}
-    const artSel=articulos.find(a=>a.id===artId);
-    const sub=cant*precio,monRec=sub*(recargo/100),total=sub+monRec,saldo=Math.max(0,total-pagado);
-    const estado=saldo===0?'pagado':(pagado>0?'parcial':'pendiente');
-    const btn=document.getElementById('btnGuardarVenta');
-    btn.disabled=true;btn.textContent='Guardando...';
-    try {
-      const{data:vd,error}=await sb.from('ventas').insert({
-        empresa_id:empresaId,cliente_id:cliId,articulo_id:artId,articulo_nombre:artSel?.nombre||null,
-        cantidad:cant,precio_unitario:precio,total,forma_pago:fp,estado,pagado,saldo,
-        es_cuotas:fp==='cuenta_corriente'&&cuotas>1,cantidad_cuotas:cuotas,recargo_pct:recargo,
-        codigo_venta:codigo,notas,fecha_venta:fecha,
-      }).select('id').single();
-      if(error)throw error;
-      if(pagado>0&&vd?.id){
-        await sb.from('pagos').insert({empresa_id:empresaId,venta_id:vd.id,monto:pagado,fecha,notas:'Pago inicial'});
+  const btn = document.getElementById('btnGuardarCarrito');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+
+  try {
+    // 1. Insertar venta cabecera (es_carrito=true, sin articulo_id individual)
+    const { data: vd, error: ev } = await sb.from('ventas').insert({
+      empresa_id:     empresaId,
+      cliente_id:     cliId,
+      articulo_nombre: `${_carrito.length} artículo${_carrito.length!==1?'s':''}`,
+      total,
+      forma_pago:     fp,
+      estado,
+      pagado:         total,
+      saldo:          0,
+      notas,
+      codigo_venta:   codigo,
+      fecha_venta:    fecha,
+      es_carrito:     true,
+      cantidad:       _carrito.reduce((s,i)=>s+i.cantidad, 0),
+    }).select('id').single();
+    if (ev) throw ev;
+
+    const ventaId = vd.id;
+
+    // 2. Insertar ítems del carrito
+    const items = _carrito.map(i => ({
+      empresa_id:      empresaId,
+      venta_id:        ventaId,
+      articulo_id:     i.articuloId,
+      articulo_nombre: i.articuloNombre,
+      cantidad:        i.cantidad,
+      precio_unitario: i.precio,
+      subtotal:        i.subtotal,
+      devuelto:        false,
+    }));
+    const { error: ei } = await sb.from('venta_items').insert(items);
+    if (ei) throw ei;
+
+    // 3. Descontar stock de cada artículo
+    for (const item of _carrito) {
+      const art = articulos.find(a => a.id === item.articuloId);
+      if (art) {
+        await sb.from('articulos')
+          .update({ stock: Math.max(0, art.stock - item.cantidad) })
+          .eq('id', item.articuloId);
       }
-      if(artSel) await sb.from('articulos').update({stock:Math.max(0,(artSel.stock||0)-cant)}).eq('id',artId);
-      mostrarAlerta('Venta registrada ✓','exito');
-      cerrarModal('modalVenta');
-      await cargarVentas();
-      await cargarArticulosSelect();
-    }catch(err){mostrarAlerta('Error: '+err.message,'error');}
-    finally{btn.disabled=false;btn.textContent='✓ Registrar venta';}
-  }
+    }
 
-  async function abrirDetalleVenta(ventaId) {
-    _detalleVentaId=ventaId;
-    document.getElementById('detalleVentaContenido').innerHTML='<div class="cargando"><div class="spinner"></div></div>';
-    abrirModal('modalDetalleVenta');
-    await renderDetalleVenta(ventaId);
-  }
+    // 4. Registrar el pago en tabla pagos
+    await sb.from('pagos').insert({
+      empresa_id: empresaId,
+      venta_id:   ventaId,
+      monto:      total,
+      fecha,
+      notas:      `Pago ${PAGO_LABEL[fp]||fp}`,
+    });
 
-  async function renderDetalleVenta(ventaId) {
-    const v=todasVentas.find(x=>x.id===ventaId);if(!v)return;
-    document.getElementById('detalleVentaTitulo').textContent=`📋 Venta${v.codigo_venta?' #'+v.codigo_venta:''}`;
-    const{data:pagosData}=await sb.from('pagos').select('*').eq('venta_id',ventaId).order('fecha').order('created_at');
-    const fechaVenta=v.fecha_venta?formatoFecha(v.fecha_venta+'T12:00:00'):formatoFecha(v.created_at);
-    document.getElementById('detalleVentaContenido').innerHTML=`
+    mostrarAlerta('Venta registrada ✓', 'exito');
+    cerrarModal('modalCarrito');
+    await cargarVentas();
+    await cargarArticulosSelect();
+  } catch(err) { mostrarAlerta('Error: '+err.message,'error'); }
+  finally { btn.disabled=false; btn.textContent='✓ Confirmar venta'; }
+}
+
+// ════════════════════════════════════════════════════════════
+// TABLA DE VENTAS
+// ════════════════════════════════════════════════════════════
+async function cargarArticulosSelect() {
+  const{data}=await sb.from('articulos').select('id,nombre,precio,stock').eq('empresa_id',empresaId).eq('activo',true).order('nombre');
+  articulos=data||[];
+  document.getElementById('ventaArticulo').innerHTML=`<option value="">— Seleccioná —</option>`+
+    articulos.map(a=>`<option value="${a.id}" data-precio="${a.precio}">${a.nombre} (stock: ${a.stock})</option>`).join('');
+}
+
+async function cargarClientesSelect() {
+  const{data}=await sb.from('clientes').select('id,nombre,codigo').eq('empresa_id',empresaId).eq('activo',true).order('nombre');
+  clientes=data||[];
+  document.getElementById('ventaCliente').innerHTML=`<option value="">— Consumidor final —</option>`+
+    clientes.map(c=>`<option value="${c.id}">${c.nombre}${c.codigo?' #'+c.codigo:''}</option>`).join('');
+}
+
+async function cargarVentas() {
+  document.getElementById('tablaVentas').innerHTML='<tr><td colspan="8"><div class="cargando"><div class="spinner"></div></div></td></tr>';
+  const{data,error}=await sb.from('ventas').select('*,clientes(nombre,codigo)')
+    .eq('empresa_id',empresaId)
+    .order('fecha_venta',{ascending:false})
+    .order('created_at',{ascending:false});
+  if(error){document.getElementById('tablaVentas').innerHTML=`<tr><td colspan="8"><div class="estado-vacio"><div class="estado-vacio-icono">⚠️</div><div class="estado-vacio-titulo">Error: ${error.message}</div></div></td></tr>`;return;}
+  todasVentas=data||[];
+  aplicarFiltros();
+}
+
+function aplicarFiltros() {
+  const q=document.getElementById('filtroQ').value.toLowerCase();
+  const estado=document.getElementById('filtroEstado').value;
+  const pago=document.getElementById('filtroPago').value;
+  let lista=todasVentas;
+  if(q) lista=lista.filter(v=>(v.clientes?.nombre||'').toLowerCase().includes(q)||(v.articulo_nombre||'').toLowerCase().includes(q)||(v.codigo_venta||'').includes(q));
+  if(estado) lista=lista.filter(v=>v.estado===estado);
+  if(pago)   lista=lista.filter(v=>v.forma_pago===pago);
+  document.getElementById('svTotal').textContent=formatoPeso(lista.reduce((s,v)=>s+Number(v.total||0),0));
+  document.getElementById('svDeuda').textContent=formatoPeso(lista.reduce((s,v)=>s+Number(v.saldo||0),0));
+  renderTabla(lista);
+}
+
+function iniciarFiltros() {
+  ['filtroQ','filtroEstado','filtroPago'].forEach(id=>{
+    document.getElementById(id).addEventListener('input',aplicarFiltros);
+    document.getElementById(id).addEventListener('change',aplicarFiltros);
+  });
+}
+
+function renderTabla(lista) {
+  const tbody=document.getElementById('tablaVentas');
+  if(!lista.length){
+    tbody.innerHTML=`<tr><td colspan="8"><div class="estado-vacio"><div class="estado-vacio-icono">💰</div><div class="estado-vacio-titulo">Sin ventas</div><button class="btn btn-acento" onclick="abrirNuevaVenta()">➕ Nueva Venta</button></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML=lista.map(v=>{
+    const clienteCol=(kiosco&&!tieneClientes)?'':
+      `<td>${v.clientes?`${v.clientes.nombre}${v.clientes.codigo?` <span class="badge-codigo">${v.clientes.codigo}</span>`:''}`:'<span class="texto-suave">Cons. final</span>'}</td>`;
+    const fechaMostrar=v.fecha_venta?formatoFecha(v.fecha_venta+'T12:00:00'):formatoFecha(v.created_at);
+    const artCol = v.es_carrito
+      ? `<span class="badge badge-azul">🛒 ${v.articulo_nombre}</span>`
+      : `${v.articulo_nombre||'-'}${v.cantidad>1?` <span class="badge badge-gris">x${v.cantidad}</span>`:''}`;
+    return `<tr>
+      <td><span class="badge-codigo">${v.codigo_venta||'—'}</span></td>
+      <td style="white-space:nowrap">${fechaMostrar}</td>
+      ${clienteCol}
+      <td class="fw-600">${artCol}</td>
+      <td><b>${formatoPeso(v.total)}</b></td>
+      <td class="${Number(v.saldo)>0?'texto-rojo fw-600':'texto-suave'}">${formatoPeso(v.saldo)}</td>
+      <td><span class="badge ${v.estado==='pagado'?'badge-verde':v.estado==='parcial'?'badge-naranja':'badge-rojo'}">${v.estado}</span></td>
+      <td><div class="tabla-acciones">
+        <button class="btn btn-sm btn-ghost" onclick="abrirDetalleVenta('${v.id}')" title="Ver detalle">📋</button>
+        ${!v.es_carrito?`<button class="btn btn-sm btn-ghost" onclick="abrirEditarVenta('${v.id}')" title="Editar">✏️</button>`:''}
+        ${Number(v.saldo)>0?`<button class="btn btn-sm btn-secundario" onclick="abrirPago('${v.id}',${v.saldo})">💵</button>`:''}
+        ${esAdmin?`<button class="btn btn-sm btn-peligro" onclick="confirmarEliminarVenta('${v.id}','${(v.articulo_nombre||'esta venta').replace(/'/g,"\\'")}')">🗑️</button>`:''}
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+// DETALLE DE VENTA — distingue carrito de individual
+// ════════════════════════════════════════════════════════════
+async function abrirDetalleVenta(ventaId) {
+  _detalleVentaId=ventaId;
+  document.getElementById('detalleVentaContenido').innerHTML='<div class="cargando"><div class="spinner"></div></div>';
+  abrirModal('modalDetalleVenta');
+  await renderDetalleVenta(ventaId);
+}
+
+async function renderDetalleVenta(ventaId) {
+  const v=todasVentas.find(x=>x.id===ventaId); if(!v)return;
+  document.getElementById('detalleVentaTitulo').textContent=`📋 Venta${v.codigo_venta?' #'+v.codigo_venta:''}`;
+  const fechaVenta=v.fecha_venta?formatoFecha(v.fecha_venta+'T12:00:00'):formatoFecha(v.created_at);
+
+  let itemsHTML = '';
+  if (v.es_carrito) {
+    // Cargar ítems del carrito
+    const{data:items}=await sb.from('venta_items').select('*').eq('venta_id',ventaId).order('created_at');
+    const its = items||[];
+    itemsHTML = `
+      <div style="margin-bottom:16px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px">🛒 Ítems del ticket</div>
+        <table class="carrito-tabla">
+          <thead><tr><th>Artículo</th><th>Cant.</th><th>Precio</th><th>Subtotal</th><th></th></tr></thead>
+          <tbody>
+            ${its.map(it=>`
+              <tr class="${it.devuelto?'item-devuelto':''}">
+                <td class="fw-600">${it.articulo_nombre}</td>
+                <td>${it.cantidad}</td>
+                <td>${formatoPeso(it.precio_unitario)}</td>
+                <td><b>${formatoPeso(it.subtotal)}</b></td>
+                <td>
+                  ${it.devuelto
+                    ? `<span class="badge badge-gris">🔄 Devuelto</span>`
+                    : `<button class="btn btn-sm btn-peligro" onclick="devolverItem('${it.id}','${ventaId}','${it.articulo_id}',${it.cantidad},${it.subtotal},'${it.articulo_nombre.replace(/'/g,"\\'")}')">🔄 Devolver</button>`
+                  }
+                </td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } else {
+    itemsHTML = `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
         <div style="padding:10px;background:var(--bg);border-radius:var(--r-sm)"><div class="texto-suave" style="font-size:11px">ARTÍCULO</div><div class="fw-600">${v.articulo_nombre||'-'}${v.cantidad>1?' x'+v.cantidad:''}</div></div>
-        <div style="padding:10px;background:var(--bg);border-radius:var(--r-sm)"><div class="texto-suave" style="font-size:11px">FECHA</div><div class="fw-600">${fechaVenta}</div></div>
-        <div style="padding:10px;background:var(--bg);border-radius:var(--r-sm)"><div class="texto-suave" style="font-size:11px">TOTAL</div><div class="fw-600">${formatoPeso(v.total)}</div></div>
         <div style="padding:10px;background:var(--bg);border-radius:var(--r-sm)"><div class="texto-suave" style="font-size:11px">FORMA PAGO</div><div class="fw-600">${PAGO_LABEL[v.forma_pago]||v.forma_pago}</div></div>
-      </div>
-      <div style="background:${Number(v.saldo)>0?'#FEF2F2':'#ECFDF5'};border:1px solid ${Number(v.saldo)>0?'#FECACA':'#A7F3D0'};border-radius:var(--r-sm);padding:14px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
-        <span style="font-weight:600;color:${Number(v.saldo)>0?'#DC2626':'#059669'}">${Number(v.saldo)>0?'💳 Saldo pendiente':'✓ Totalmente pagado'}</span>
-        ${Number(v.saldo)>0?`<span style="font-size:20px;font-weight:800;color:#DC2626">${formatoPeso(v.saldo)}</span>`:''}
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div style="font-size:14px;font-weight:700">💵 Historial de pagos</div>
-        ${Number(v.saldo)>0?`<button class="btn btn-sm btn-secundario" onclick="abrirPagoDesdeDetalle('${v.id}',${v.saldo})">+ Registrar pago</button>`:''}
-      </div>
-      <div id="listaPagos">
-        ${!pagosData?.length
-          ?`<p class="texto-suave" style="font-size:13px;padding:8px 0">${Number(v.pagado)>0?`<span style="color:var(--naranja)">⚠ ${formatoPeso(v.pagado)} pagados antes de esta versión — sin detalle.</span>`:'Sin pagos registrados.'}</p>`
-          :pagosData.map(p=>`
-            <div class="pago-item" id="pago-${p.id}">
-              <div class="pago-item-info">
-                <div class="pago-item-monto">${formatoPeso(p.monto)}</div>
-                <div class="pago-item-fecha">📅 ${formatoFecha(p.fecha+'T12:00:00')}</div>
-                ${p.notas?`<div class="pago-item-notas">${p.notas}</div>`:''}
-              </div>
-              <button class="btn btn-sm btn-peligro" onclick="eliminarPago('${p.id}','${ventaId}',${p.monto})">🗑️ Eliminar</button>
-            </div>`).join('')}
       </div>`;
   }
 
-  function abrirPago(ventaId,saldo) {
-    document.getElementById('pagoVentaId').value=ventaId;
-    document.getElementById('pagoMonto').value='';
-    document.getElementById('pagoFecha').value=hoyISO();
-    document.getElementById('pagoNotas').value='';
-    document.getElementById('pagoInfo').textContent=`Saldo actual: ${formatoPeso(saldo)}`;
-    abrirModal('modalPago');
-  }
-  function abrirPagoDesdeDetalle(ventaId,saldo){cerrarModal('modalDetalleVenta');abrirPago(ventaId,saldo);}
+  const{data:pagosData}=await sb.from('pagos').select('*').eq('venta_id',ventaId).order('fecha').order('created_at');
 
-  async function confirmarPago() {
-    const ventaId=document.getElementById('pagoVentaId').value;
-    const monto=parseFloat(document.getElementById('pagoMonto').value)||0;
-    const fecha=document.getElementById('pagoFecha').value||hoyISO();
-    const notas=document.getElementById('pagoNotas').value.trim()||null;
-    if(monto<=0){mostrarAlerta('Ingresá un monto válido','error');return;}
-    const{error:ep}=await sb.from('pagos').insert({empresa_id:empresaId,venta_id:ventaId,monto,fecha,notas});
-    if(ep){mostrarAlerta('Error: '+ep.message,'error');return;}
-    const{error:er}=await sb.rpc('recalcular_venta',{p_venta_id:ventaId});
-    if(er){mostrarAlerta('Error al recalcular: '+er.message,'error');return;}
-    mostrarAlerta('Pago registrado ✓','exito');
-    cerrarModal('modalPago');
-    await cargarVentas();
-    if(_detalleVentaId===ventaId){abrirModal('modalDetalleVenta');await renderDetalleVenta(ventaId);}
-  }
+  document.getElementById('detalleVentaContenido').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <div style="padding:10px;background:var(--bg);border-radius:var(--r-sm)"><div class="texto-suave" style="font-size:11px">FECHA</div><div class="fw-600">${fechaVenta}</div></div>
+      <div style="padding:10px;background:var(--bg);border-radius:var(--r-sm)"><div class="texto-suave" style="font-size:11px">TOTAL</div><div class="fw-600">${formatoPeso(v.total)}</div></div>
+      ${!v.es_carrito?`<div style="padding:10px;background:var(--bg);border-radius:var(--r-sm)"><div class="texto-suave" style="font-size:11px">FORMA PAGO</div><div class="fw-600">${PAGO_LABEL[v.forma_pago]||v.forma_pago}</div></div>`:''}
+    </div>
+    ${itemsHTML}
+    <div style="background:${Number(v.saldo)>0?'#FEF2F2':'#ECFDF5'};border:1px solid ${Number(v.saldo)>0?'#FECACA':'#A7F3D0'};border-radius:var(--r-sm);padding:14px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-weight:600;color:${Number(v.saldo)>0?'#DC2626':'#059669'}">${Number(v.saldo)>0?'💳 Saldo pendiente':'✓ Totalmente pagado'}</span>
+      ${Number(v.saldo)>0?`<span style="font-size:20px;font-weight:800;color:#DC2626">${formatoPeso(v.saldo)}</span>`:''}
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:14px;font-weight:700">💵 Historial de pagos</div>
+      ${Number(v.saldo)>0?`<button class="btn btn-sm btn-secundario" onclick="abrirPagoDesdeDetalle('${v.id}',${v.saldo})">+ Registrar pago</button>`:''}
+    </div>
+    <div id="listaPagos">
+      ${!pagosData?.length
+        ?`<p class="texto-suave" style="font-size:13px;padding:8px 0">${Number(v.pagado)>0?`<span style="color:var(--naranja)">⚠ ${formatoPeso(v.pagado)} registrados antes de esta versión.</span>`:'Sin pagos registrados.'}</p>`
+        :pagosData.map(p=>`
+          <div class="pago-item" id="pago-${p.id}">
+            <div class="pago-item-info">
+              <div class="pago-item-monto">${formatoPeso(p.monto)}</div>
+              <div class="pago-item-fecha">📅 ${formatoFecha(p.fecha+'T12:00:00')}</div>
+              ${p.notas?`<div class="pago-item-notas">${p.notas}</div>`:''}
+            </div>
+            <button class="btn btn-sm btn-peligro" onclick="eliminarPago('${p.id}','${ventaId}',${p.monto})">🗑️ Eliminar</button>
+          </div>`).join('')}
+    </div>`;
+}
 
-  async function eliminarPago(pagoId,ventaId,monto) {
-    if(!confirm(`¿Eliminar el pago de ${formatoPeso(monto)}?\nEl saldo se recalcula automáticamente.`))return;
-    const{error}=await sb.from('pagos').delete().eq('id',pagoId);
-    if(error){mostrarAlerta('Error: '+error.message,'error');return;}
-    await sb.rpc('recalcular_venta',{p_venta_id:ventaId});
-    mostrarAlerta('Pago eliminado ✓','exito');
-    await cargarVentas();
-    await renderDetalleVenta(ventaId);
-  }
+// ════════════════════════════════════════════════════════════
+// DEVOLUCIÓN DE ÍTEM (Opción A — simple)
+// ════════════════════════════════════════════════════════════
+async function devolverItem(itemId, ventaId, articuloId, cantidad, subtotal, nombre) {
+  if (!confirm(`¿Devolver "${nombre}" (x${cantidad})?\n\nSe marcará como devuelto, se restaurará el stock y el total de la venta se recalculará.`)) return;
 
-  function abrirEditarVenta(ventaId) {
-    const v=todasVentas.find(x=>x.id===ventaId);if(!v)return;
-    document.getElementById('editVentaId').value=ventaId;
-    document.getElementById('editVentaCodigo').value=v.codigo_venta||'';
-    document.getElementById('editVentaFecha').value=fechaParaInput(v.fecha_venta||v.created_at);
-    document.getElementById('editVentaCantidad').value=v.cantidad||1;
-    document.getElementById('editVentaPrecio').value=v.precio_unitario||0;
-    document.getElementById('editVentaFormaPago').value=v.forma_pago||'efectivo';
-    document.getElementById('editVentaNotas').value=v.notas||'';
-    document.getElementById('editVentaErrCodigo').classList.remove('visible');
-    abrirModal('modalEditarVenta');
-  }
+  // 1. Marcar ítem como devuelto
+  const{error:e1}=await sb.from('venta_items').update({devuelto:true}).eq('id',itemId);
+  if(e1){mostrarAlerta('Error: '+e1.message,'error');return;}
 
-  async function confirmarEditarVenta() {
-    const ventaId=document.getElementById('editVentaId').value;
-    const codigo=document.getElementById('editVentaCodigo').value.trim()||null;
-    const fecha=document.getElementById('editVentaFecha').value||hoyISO();
-    const cant=parseInt(document.getElementById('editVentaCantidad').value)||1;
-    const precio=parseFloat(document.getElementById('editVentaPrecio').value)||0;
-    const fp=document.getElementById('editVentaFormaPago').value;
-    const notas=document.getElementById('editVentaNotas').value.trim()||null;
-    if(codigo){const unico=await codigoEsUnico('ventas','codigo_venta',codigo,empresaId,ventaId);if(!unico){document.getElementById('editVentaErrCodigo').classList.add('visible');return;}}
-    const v=todasVentas.find(x=>x.id===ventaId);
-    const sub=cant*precio,total=sub+sub*((v?.recargo_pct||0)/100);
-    const{error}=await sb.from('ventas').update({codigo_venta:codigo,fecha_venta:fecha,cantidad:cant,precio_unitario:precio,total,forma_pago:fp,notas}).eq('id',ventaId);
-    if(error){mostrarAlerta('Error: '+error.message,'error');return;}
-    await sb.rpc('recalcular_venta',{p_venta_id:ventaId});
-    mostrarAlerta('Venta actualizada ✓','exito');
-    cerrarModal('modalEditarVenta');
-    await cargarVentas();
+  // 2. Devolver stock
+  if (articuloId) {
+    const art=articulos.find(a=>a.id===articuloId);
+    if(art) await sb.from('articulos').update({stock:(art.stock||0)+cantidad}).eq('id',articuloId);
   }
 
-  async function confirmarEliminarVenta(ventaId,nombreArticulo) {
-    const v=todasVentas.find(x=>x.id===ventaId);
-    if(!confirm(`¿Eliminar la venta de "${nombreArticulo}"?\n\nSe eliminarán los pagos y se devolverá el stock.\n\nEsta acción no se puede deshacer.`))return;
-    await sb.from('pagos').delete().eq('venta_id',ventaId);
-    if(v?.articulo_id&&v?.cantidad){const art=articulos.find(a=>a.id===v.articulo_id);if(art) await sb.from('articulos').update({stock:(art.stock||0)+v.cantidad}).eq('id',v.articulo_id);}
-    const{error}=await sb.from('ventas').delete().eq('id',ventaId);
-    if(error){mostrarAlerta('Error: '+error.message,'error');return;}
-    mostrarAlerta('Venta eliminada. Stock restaurado ✓','exito');
-    await cargarVentas();
-    await cargarArticulosSelect();
+  // 3. Recalcular total de la venta desde los ítems activos
+  const{error:e2}=await sb.rpc('recalcular_venta_carrito',{p_venta_id:ventaId});
+  if(e2){mostrarAlerta('Error al recalcular: '+e2.message,'error');return;}
+
+  mostrarAlerta(`"${nombre}" devuelto. Stock restaurado ✓`,'exito');
+  await cargarVentas();
+  await cargarArticulosSelect();
+  await renderDetalleVenta(ventaId);
+}
+
+// ════════════════════════════════════════════════════════════
+// PAGOS
+// ════════════════════════════════════════════════════════════
+function abrirPago(ventaId,saldo) {
+  document.getElementById('pagoVentaId').value=ventaId;
+  document.getElementById('pagoMonto').value='';
+  document.getElementById('pagoFecha').value=hoyISO();
+  document.getElementById('pagoNotas').value='';
+  document.getElementById('pagoInfo').textContent=`Saldo actual: ${formatoPeso(saldo)}`;
+  abrirModal('modalPago');
+}
+function abrirPagoDesdeDetalle(ventaId,saldo){cerrarModal('modalDetalleVenta');abrirPago(ventaId,saldo);}
+
+async function confirmarPago() {
+  const ventaId=document.getElementById('pagoVentaId').value;
+  const monto=parseFloat(document.getElementById('pagoMonto').value)||0;
+  const fecha=document.getElementById('pagoFecha').value||hoyISO();
+  const notas=document.getElementById('pagoNotas').value.trim()||null;
+  if(monto<=0){mostrarAlerta('Ingresá un monto válido','error');return;}
+  const{error:ep}=await sb.from('pagos').insert({empresa_id:empresaId,venta_id:ventaId,monto,fecha,notas});
+  if(ep){mostrarAlerta('Error: '+ep.message,'error');return;}
+  const v=todasVentas.find(x=>x.id===ventaId);
+  const rpc=v?.es_carrito?'recalcular_venta_carrito':'recalcular_venta';
+  await sb.rpc(rpc,{p_venta_id:ventaId});
+  mostrarAlerta('Pago registrado ✓','exito');
+  cerrarModal('modalPago');
+  await cargarVentas();
+  if(_detalleVentaId===ventaId){abrirModal('modalDetalleVenta');await renderDetalleVenta(ventaId);}
+}
+
+async function eliminarPago(pagoId,ventaId,monto) {
+  if(!confirm(`¿Eliminar el pago de ${formatoPeso(monto)}?\nEl saldo se recalcula automáticamente.`))return;
+  const{error}=await sb.from('pagos').delete().eq('id',pagoId);
+  if(error){mostrarAlerta('Error: '+error.message,'error');return;}
+  const v=todasVentas.find(x=>x.id===ventaId);
+  const rpc=v?.es_carrito?'recalcular_venta_carrito':'recalcular_venta';
+  await sb.rpc(rpc,{p_venta_id:ventaId});
+  mostrarAlerta('Pago eliminado ✓','exito');
+  await cargarVentas();
+  await renderDetalleVenta(ventaId);
+}
+
+// ════════════════════════════════════════════════════════════
+// EDITAR / ELIMINAR VENTA (solo modo mayorista)
+// ════════════════════════════════════════════════════════════
+function abrirEditarVenta(ventaId) {
+  const v=todasVentas.find(x=>x.id===ventaId); if(!v)return;
+  document.getElementById('editVentaId').value=ventaId;
+  document.getElementById('editVentaCodigo').value=v.codigo_venta||'';
+  document.getElementById('editVentaFecha').value=fechaParaInput(v.fecha_venta||v.created_at);
+  document.getElementById('editVentaCantidad').value=v.cantidad||1;
+  document.getElementById('editVentaPrecio').value=v.precio_unitario||0;
+  document.getElementById('editVentaFormaPago').value=v.forma_pago||'efectivo';
+  document.getElementById('editVentaNotas').value=v.notas||'';
+  document.getElementById('editVentaErrCodigo').classList.remove('visible');
+  abrirModal('modalEditarVenta');
+}
+
+async function confirmarEditarVenta() {
+  const ventaId=document.getElementById('editVentaId').value;
+  const codigo=document.getElementById('editVentaCodigo').value.trim()||null;
+  const fecha=document.getElementById('editVentaFecha').value||hoyISO();
+  const cant=parseInt(document.getElementById('editVentaCantidad').value)||1;
+  const precio=parseFloat(document.getElementById('editVentaPrecio').value)||0;
+  const fp=document.getElementById('editVentaFormaPago').value;
+  const notas=document.getElementById('editVentaNotas').value.trim()||null;
+  if(codigo){const unico=await codigoEsUnico('ventas','codigo_venta',codigo,empresaId,ventaId);if(!unico){document.getElementById('editVentaErrCodigo').classList.add('visible');return;}}
+  const v=todasVentas.find(x=>x.id===ventaId);
+  const sub=cant*precio,total=sub+sub*((v?.recargo_pct||0)/100);
+  const{error}=await sb.from('ventas').update({codigo_venta:codigo,fecha_venta:fecha,cantidad:cant,precio_unitario:precio,total,forma_pago:fp,notas}).eq('id',ventaId);
+  if(error){mostrarAlerta('Error: '+error.message,'error');return;}
+  await sb.rpc('recalcular_venta',{p_venta_id:ventaId});
+  mostrarAlerta('Venta actualizada ✓','exito');
+  cerrarModal('modalEditarVenta');
+  await cargarVentas();
+}
+
+async function confirmarEliminarVenta(ventaId,nombreArticulo) {
+  const v=todasVentas.find(x=>x.id===ventaId);
+  if(!confirm(`¿Eliminar la venta de "${nombreArticulo}"?\n\nSe eliminarán los pagos y se devolverá el stock.\n\nEsta acción no se puede deshacer.`))return;
+  await sb.from('pagos').delete().eq('venta_id',ventaId);
+
+  if (v?.es_carrito) {
+    // Devolver stock de todos los ítems activos del carrito
+    const{data:items}=await sb.from('venta_items').select('*').eq('venta_id',ventaId).eq('devuelto',false);
+    for(const it of items||[]){
+      if(it.articulo_id){
+        const art=articulos.find(a=>a.id===it.articulo_id);
+        if(art) await sb.from('articulos').update({stock:(art.stock||0)+it.cantidad}).eq('id',it.articulo_id);
+      }
+    }
+    await sb.from('venta_items').delete().eq('venta_id',ventaId);
+  } else {
+    if(v?.articulo_id&&v?.cantidad){
+      const art=articulos.find(a=>a.id===v.articulo_id);
+      if(art) await sb.from('articulos').update({stock:(art.stock||0)+v.cantidad}).eq('id',v.articulo_id);
+    }
   }
 
-  function limpiarErrorCodigoVenta(){document.getElementById('ventaErrCodigo')?.classList.remove('visible');}
-  function usarSugeridoVenta(){const s=document.getElementById('ventaCodigoSugerido');if(s?.dataset?.valor)document.getElementById('ventaCodigo').value=s.dataset.valor;}
+  const{error}=await sb.from('ventas').delete().eq('id',ventaId);
+  if(error){mostrarAlerta('Error: '+error.message,'error');return;}
+  mostrarAlerta('Venta eliminada. Stock restaurado ✓','exito');
+  await cargarVentas();
+  await cargarArticulosSelect();
+}
+
+// ════════════════════════════════════════════════════════════
+// PANELES RESUMEN Y ARQUEO (igual que v4.3)
+// ════════════════════════════════════════════════════════════
+let _panelActivo=null;
+function togglePanel(panel){
+  const pr=document.getElementById('panelResumen');
+  const pa=document.getElementById('panelArqueo');
+  if(_panelActivo===panel){pr.classList.remove('activo');pa.classList.remove('activo');_panelActivo=null;return;}
+  _panelActivo=panel;
+  pr.classList.toggle('activo',panel==='resumen');
+  pa.classList.toggle('activo',panel==='arqueo');
+  if(panel==='resumen') calcularResumen();
+  if(panel==='arqueo')  cargarDatosArqueo();
+}
+
+function selPeriodo(periodo,btn){
+  _periodoActual=periodo;
+  document.querySelectorAll('.periodo-tab').forEach(b=>b.classList.remove('activo'));
+  btn.classList.add('activo');
+  document.getElementById('periodoRango').classList.toggle('visible',periodo==='rango');
+  if(periodo!=='rango') calcularResumen();
+}
+
+function getRangoFechas(){
+  const hoy=new Date();let desde,hasta;
+  hasta=new Date(hoy);hasta.setHours(23,59,59,999);
+  switch(_periodoActual){
+    case 'hoy':desde=new Date(hoy);desde.setHours(0,0,0,0);break;
+    case 'semana':{const dia=hoy.getDay()||7;desde=new Date(hoy);desde.setDate(hoy.getDate()-dia+1);desde.setHours(0,0,0,0);break;}
+    case 'quincena':desde=new Date(hoy);desde.setDate(hoy.getDate()<=15?1:16);desde.setHours(0,0,0,0);break;
+    case 'mes':desde=new Date(hoy.getFullYear(),hoy.getMonth(),1);break;
+    case 'anio':desde=new Date(hoy.getFullYear(),0,1);break;
+    case 'rango':{const d=document.getElementById('rangoDesde').value;const h=document.getElementById('rangoHasta').value;if(!d||!h)return null;desde=new Date(d+'T00:00:00');hasta=new Date(h+'T23:59:59');break;}
+  }
+  return{desde,hasta};
+}
+
+function labelPeriodo(){
+  const r=getRangoFechas();if(!r)return'';
+  const opts={day:'2-digit',month:'2-digit',year:'numeric'};
+  const f=d=>d.toLocaleDateString('es-AR',opts);
+  if(_periodoActual==='hoy')return`Hoy — ${f(r.desde)}`;
+  return`${f(r.desde)} al ${f(r.hasta)}`;
+}
+
+async function calcularResumen(){
+  const r=getRangoFechas();if(!r)return;
+  document.getElementById('resumenContenido').innerHTML='<div class="cargando"><div class="spinner"></div></div>';
+  const{desde,hasta}=r;
+  const{data:ventas}=await sb.from('ventas').select('*,clientes(nombre)')
+    .eq('empresa_id',empresaId)
+    .gte('fecha_venta',desde.toISOString().split('T')[0])
+    .lte('fecha_venta',hasta.toISOString().split('T')[0]);
+  const{data:pagos}=await sb.from('pagos').select('*,ventas(forma_pago,fecha_venta)')
+    .eq('empresa_id',empresaId)
+    .gte('fecha',desde.toISOString().split('T')[0])
+    .lte('fecha',hasta.toISOString().split('T')[0]);
+  const v=ventas||[],p=pagos||[];
+  const tots={efectivo:0,transferencia:0,tarjeta:0,cuenta_corriente:0};
+  v.forEach(vt=>{tots[vt.forma_pago]=(tots[vt.forma_pago]||0)+Number(vt.total||0);});
+  const totalVentas=Object.values(tots).reduce((s,x)=>s+x,0);
+  let totalCobros=0;
+  const cobros={efectivo:0,transferencia:0,tarjeta:0,cuenta_corriente:0};
+  p.forEach(pg=>{const fp=pg.ventas?.forma_pago||'efectivo';cobros[fp]=(cobros[fp]||0)+Number(pg.monto||0);totalCobros+=Number(pg.monto||0);});
+  _datosResumen={ventas:v,pagos:p,tots,cobros,totalVentas,totalCobros,periodo:labelPeriodo()};
+  const COLS=[{key:'efectivo',label:'💵 Efectivo',cls:'efectivo'},{key:'transferencia',label:'🏦 Transferencia',cls:'transf'},{key:'tarjeta',label:'💳 Tarjeta',cls:'tarjeta'},{key:'cuenta_corriente',label:'📋 Cta. corriente',cls:'cta'}];
+  document.getElementById('resumenContenido').innerHTML=`
+    <div style="font-size:12px;font-weight:600;color:var(--texto-suave);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px">📅 ${labelPeriodo()} · ${v.length} venta${v.length!==1?'s':''}</div>
+    <div style="font-size:13px;font-weight:700;color:var(--texto);margin-bottom:8px">Ventas nuevas</div>
+    <div class="resumen-cards">
+      ${COLS.map(c=>`<div class="resumen-card ${c.cls}"><div class="resumen-card-label">${c.label}</div><div class="resumen-card-valor">${formatoPeso(tots[c.key])}</div><div class="resumen-card-sub">${v.filter(vt=>vt.forma_pago===c.key).length} venta${v.filter(vt=>vt.forma_pago===c.key).length!==1?'s':''}</div></div>`).join('')}
+      <div class="resumen-card gran-total"><div class="resumen-card-label">TOTAL VENTAS</div><div class="resumen-card-valor" style="color:var(--azul-nav)">${formatoPeso(totalVentas)}</div></div>
+    </div>
+    <div class="seccion-cobros">
+      <div class="seccion-titulo">💳 Cobros del período <small class="texto-suave" style="font-weight:400">(pagos de deudas anteriores)</small></div>
+      <div class="resumen-cards">
+        ${COLS.map(c=>`<div class="resumen-card ${c.cls}"><div class="resumen-card-label">${c.label}</div><div class="resumen-card-valor">${formatoPeso(cobros[c.key])}</div></div>`).join('')}
+        <div class="resumen-card gran-total"><div class="resumen-card-label">TOTAL COBROS</div><div class="resumen-card-valor" style="color:#0891b2">${formatoPeso(totalCobros)}</div></div>
+      </div>
+    </div>
+    <div class="seccion-cobros">
+      <div class="seccion-titulo">💰 Ingreso total del período</div>
+      <div style="background:var(--azul-nav);color:#fff;border-radius:var(--r-md);padding:16px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:13px;opacity:.85">Ventas nuevas + cobros</span>
+        <span style="font-size:24px;font-weight:800">${formatoPeso(totalVentas+totalCobros)}</span>
+      </div>
+    </div>
+    ${v.length?`<div class="seccion-cobros"><div class="seccion-titulo">📋 Detalle de ventas</div><div class="tabla-contenedor"><table class="tabla"><thead><tr><th>Cód.</th><th>Fecha</th><th>Cliente</th><th>Artículo</th><th>F.Pago</th><th>Total</th><th>Saldo</th></tr></thead><tbody>${v.map(vt=>`<tr><td><span class="badge-codigo">${vt.codigo_venta||'—'}</span></td><td>${formatoFecha((vt.fecha_venta||vt.created_at)+'T12:00:00')}</td><td>${vt.clientes?.nombre||'Cons. final'}</td><td class="fw-600">${vt.articulo_nombre||'-'}</td><td>${PAGO_LABEL[vt.forma_pago]||vt.forma_pago}</td><td><b>${formatoPeso(vt.total)}</b></td><td class="${Number(vt.saldo)>0?'texto-rojo':''}">${formatoPeso(vt.saldo)}</td></tr>`).join('')}</tbody></table></div></div>`:''}
+  `;
+}
+
+function exportarResumenPDF(){
+  if(!_datosResumen){mostrarAlerta('Generá el resumen primero','info');return;}
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const W=210;let y=15;const nombreEmpresa=empresa?.nombre||'Stockia';
+  doc.setFillColor(30,58,138);doc.rect(0,0,W,28,'F');
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(20);doc.text('Stockia',14,12);
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text('Sistema de gestión',14,18);
+  doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text(nombreEmpresa,W-14,12,{align:'right'});
+  doc.setFontSize(8);doc.text('Resumen de Ventas',W-14,18,{align:'right'});y=36;
+  doc.setTextColor(30,58,138);doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(_datosResumen.periodo,14,y);y+=6;
+  doc.setTextColor(100,100,100);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(`Generado: ${new Date().toLocaleString('es-AR')}`,14,y);y+=10;
+  const filasPago=[['💵 Efectivo',formatoPeso(_datosResumen.tots.efectivo)],['🏦 Transferencia',formatoPeso(_datosResumen.tots.transferencia)],['💳 Tarjeta',formatoPeso(_datosResumen.tots.tarjeta)],['📋 Cta. corriente',formatoPeso(_datosResumen.tots.cuenta_corriente)],['TOTAL VENTAS',formatoPeso(_datosResumen.totalVentas)]];
+  doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('VENTAS NUEVAS',14,y);y+=6;
+  filasPago.forEach(([label,valor],i)=>{const esT=i===filasPago.length-1;if(esT){doc.setFillColor(30,58,138);doc.rect(14,y-4,W-28,7,'F');doc.setTextColor(255,255,255);}else{doc.setFillColor(i%2?248:255,i%2?250:255,i%2?255:255);doc.rect(14,y-4,W-28,7,'F');doc.setTextColor(30,30,30);}doc.setFont('helvetica',esT?'bold':'normal');doc.setFontSize(9);doc.text(label,18,y);doc.text(valor,W-18,y,{align:'right'});y+=7;});y+=6;
+  const filasCobros=[['💵 Efectivo',formatoPeso(_datosResumen.cobros.efectivo)],['🏦 Transferencia',formatoPeso(_datosResumen.cobros.transferencia)],['💳 Tarjeta',formatoPeso(_datosResumen.cobros.tarjeta)],['📋 Cta. corriente',formatoPeso(_datosResumen.cobros.cuenta_corriente)],['TOTAL COBROS',formatoPeso(_datosResumen.totalCobros)]];
+  doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('COBROS DEL PERÍODO',14,y);y+=6;
+  filasCobros.forEach(([label,valor],i)=>{const esT=i===filasCobros.length-1;if(esT){doc.setFillColor(8,145,178);doc.rect(14,y-4,W-28,7,'F');doc.setTextColor(255,255,255);}else{doc.setFillColor(i%2?248:255,i%2?250:255,i%2?255:255);doc.rect(14,y-4,W-28,7,'F');doc.setTextColor(30,30,30);}doc.setFont('helvetica',esT?'bold':'normal');doc.setFontSize(9);doc.text(label,18,y);doc.text(valor,W-18,y,{align:'right'});y+=7;});y+=6;
+  doc.setFillColor(16,185,129);doc.rect(14,y-4,W-28,10,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('INGRESO TOTAL',18,y+2);doc.text(formatoPeso(_datosResumen.totalVentas+_datosResumen.totalCobros),W-18,y+2,{align:'right'});y+=16;
+  const totalPags=doc.internal.getNumberOfPages();
+  for(let i=1;i<=totalPags;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(150,150,150);doc.text(`Stockia · ${nombreEmpresa} · Pág. ${i}/${totalPags}`,W/2,290,{align:'center'});}
+  doc.save(`stockia-resumen-${hoyISO()}.pdf`);
+  mostrarAlerta('PDF generado ✓','exito');
+}
+
+function exportarResumenExcel(){
+  if(!_datosResumen){mostrarAlerta('Generá el resumen primero','info');return;}
+  const wb=XLSX.utils.book_new();const nombreEmpresa=empresa?.nombre||'Stockia';
+  const resumenData=[[`Stockia · ${nombreEmpresa}`],[`Resumen: ${_datosResumen.periodo}`],[`Generado: ${new Date().toLocaleString('es-AR')}`],[],['VENTAS NUEVAS'],['Forma de pago','Total'],['Efectivo',_datosResumen.tots.efectivo],['Transferencia',_datosResumen.tots.transferencia],['Tarjeta',_datosResumen.tots.tarjeta],['Cuenta corriente',_datosResumen.tots.cuenta_corriente],['TOTAL VENTAS',_datosResumen.totalVentas],[],['COBROS DEL PERÍODO'],['Forma de pago','Total'],['Efectivo',_datosResumen.cobros.efectivo],['Transferencia',_datosResumen.cobros.transferencia],['Tarjeta',_datosResumen.cobros.tarjeta],['Cuenta corriente',_datosResumen.cobros.cuenta_corriente],['TOTAL COBROS',_datosResumen.totalCobros],[],['INGRESO TOTAL',_datosResumen.totalVentas+_datosResumen.totalCobros]];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(resumenData),'Resumen');
+  if(_datosResumen.ventas.length){const det=[['Código','Fecha','Cliente','Artículo','Forma Pago','Total','Pagado','Saldo','Estado'],..._datosResumen.ventas.map(v=>[v.codigo_venta||'',v.fecha_venta||v.created_at?.split('T')[0],v.clientes?.nombre||'Consumidor final',v.articulo_nombre||'',v.forma_pago,Number(v.total||0),Number(v.pagado||0),Number(v.saldo||0),v.estado])];XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(det),'Ventas');}
+  if(_datosResumen.pagos.length){const cob=[['Fecha cobro','Monto','Notas'],..._datosResumen.pagos.map(p=>[p.fecha,Number(p.monto||0),p.notas||''])];XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(cob),'Cobros');}
+  XLSX.writeFile(wb,`stockia-resumen-${hoyISO()}.xlsx`);
+  mostrarAlerta('Excel generado ✓','exito');
+}
+
+async function cargarDatosArqueo(){
+  document.getElementById('arqueoSistema').innerHTML='<div class="cargando"><div class="spinner"></div></div>';
+  const turno=document.getElementById('arqueoTurno')?.value||'diario';
+  const hoy=hoyISO();
+  const{data:ventas}=await sb.from('ventas').select('total,forma_pago').eq('empresa_id',empresaId).eq('fecha_venta',hoy);
+  const{data:cobros}=await sb.from('pagos').select('monto,ventas(forma_pago)').eq('empresa_id',empresaId).eq('fecha',hoy);
+  const v=ventas||[],c=cobros||[];
+  const efVentas=v.filter(vt=>vt.forma_pago==='efectivo').reduce((s,vt)=>s+Number(vt.total||0),0);
+  const trVentas=v.filter(vt=>vt.forma_pago==='transferencia').reduce((s,vt)=>s+Number(vt.total||0),0);
+  const tarVentas=v.filter(vt=>vt.forma_pago==='tarjeta').reduce((s,vt)=>s+Number(vt.total||0),0);
+  const ctaVentas=v.filter(vt=>vt.forma_pago==='cuenta_corriente').reduce((s,vt)=>s+Number(vt.total||0),0);
+  const efCobros=c.filter(p=>(p.ventas?.forma_pago||'efectivo')==='efectivo').reduce((s,p)=>s+Number(p.monto||0),0);
+  const totalEf=efVentas+efCobros;
+  document.getElementById('arqueoSistema').innerHTML=`
+    <div class="arqueo-seccion">
+      <div style="font-size:12px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">📅 ${new Date().toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'long'})}${turno!=='diario'?` · Turno ${turno}`:''}</div>
+      <div class="resumen-cards">
+        <div class="resumen-card efectivo"><div class="resumen-card-label">💵 Efectivo (ventas)</div><div class="resumen-card-valor">${formatoPeso(efVentas)}</div></div>
+        <div class="resumen-card transf"><div class="resumen-card-label">🏦 Transferencia</div><div class="resumen-card-valor">${formatoPeso(trVentas)}</div></div>
+        <div class="resumen-card tarjeta"><div class="resumen-card-label">💳 Tarjeta</div><div class="resumen-card-valor">${formatoPeso(tarVentas)}</div></div>
+        <div class="resumen-card cta"><div class="resumen-card-label">📋 Cta. corriente</div><div class="resumen-card-valor">${formatoPeso(ctaVentas)}</div></div>
+        <div class="resumen-card cobros"><div class="resumen-card-label">💳 Cobros efectivo</div><div class="resumen-card-valor">${formatoPeso(efCobros)}</div></div>
+        <div class="resumen-card gran-total"><div class="resumen-card-label">💵 EFECTIVO TOTAL EN CAJA (sistema)</div><div class="resumen-card-valor">${formatoPeso(totalEf)}</div></div>
+      </div>
+    </div>`;
+  const registraFisico=_configFunciones.arqueo_registra_fisico!==false;
+  const secFisico=document.getElementById('arqueoFisicoSection');
+  secFisico.style.display=registraFisico?'block':'none';
+  if(registraFisico){
+    document.getElementById('billetesGrid').innerHTML=BILLETES.map(b=>`<div class="billete-item"><div class="billete-label">$ ${b>=1000?(b/1000)+'K':b}</div><input type="number" class="billete-input" id="bill_${b}" value="0" min="0" oninput="actualizarConteo()" placeholder="0"><div class="billete-subtotal" id="sub_${b}">= $0</div></div>`).join('');
+    document.getElementById('arqueoFisicoSection').dataset.totalSistema=totalEf;
+    actualizarConteo();
+  }
+  await cargarHistorialArqueos();
+}
+
+function actualizarConteo(){
+  let totalContado=0;
+  BILLETES.forEach(b=>{const cant=parseInt(document.getElementById('bill_'+b)?.value)||0;const sub=cant*b;totalContado+=sub;const el=document.getElementById('sub_'+b);if(el)el.textContent=`= ${formatoPeso(sub)}`;});
+  const totalSistema=parseFloat(document.getElementById('arqueoFisicoSection').dataset.totalSistema||0);
+  const diferencia=totalContado-totalSistema;
+  const esOk=Math.abs(diferencia)<1;
+  document.getElementById('arqueoComparacion').innerHTML=`
+    <div class="arqueo-box sistema"><div class="arqueo-box-label">Sistema dice</div><div class="arqueo-box-valor" style="color:var(--azul-accion)">${formatoPeso(totalSistema)}</div></div>
+    <div class="arqueo-box contado"><div class="arqueo-box-label">Contado físico</div><div class="arqueo-box-valor" style="color:var(--verde)">${formatoPeso(totalContado)}</div></div>
+    <div class="arqueo-box ${esOk?'diferencia-ok':'diferencia-mal'}"><div class="arqueo-box-label">${esOk?'✓ Cierra':'⚠ Diferencia'}</div><div class="arqueo-box-valor" style="color:${esOk?'var(--verde)':'var(--rojo)'}">${diferencia>=0?'+':''}${formatoPeso(diferencia)}</div><div style="font-size:11px;color:var(--texto-suave);margin-top:2px">${esOk?'Todo cuadra':'Revisá el conteo'}</div></div>`;
+}
+
+async function guardarArqueo(){
+  const totalSistema=parseFloat(document.getElementById('arqueoFisicoSection').dataset.totalSistema||0);
+  let totalContado=0;const detalleBilletes={};
+  BILLETES.forEach(b=>{const cant=parseInt(document.getElementById('bill_'+b)?.value)||0;if(cant>0)detalleBilletes[b]=cant;totalContado+=cant*b;});
+  const hoy=hoyISO();const turno=document.getElementById('arqueoTurno')?.value||'diario';const notas=document.getElementById('arqueoNotas')?.value.trim()||null;
+  const{data:ventas}=await sb.from('ventas').select('total,forma_pago').eq('empresa_id',empresaId).eq('fecha_venta',hoy);
+  const{data:cobros}=await sb.from('pagos').select('monto,ventas(forma_pago)').eq('empresa_id',empresaId).eq('fecha',hoy);
+  const v=ventas||[],c=cobros||[];
+  const tots={efectivo:v.filter(x=>x.forma_pago==='efectivo').reduce((s,x)=>s+Number(x.total),0),transferencia:v.filter(x=>x.forma_pago==='transferencia').reduce((s,x)=>s+Number(x.total),0),tarjeta:v.filter(x=>x.forma_pago==='tarjeta').reduce((s,x)=>s+Number(x.total),0),cta:v.filter(x=>x.forma_pago==='cuenta_corriente').reduce((s,x)=>s+Number(x.total),0)};
+  const totalCobros=c.reduce((s,p)=>s+Number(p.monto),0);
+  const{error}=await sb.from('arqueos').insert({empresa_id:empresaId,turno,fecha:hoy,periodo_desde:`${hoy}T00:00:00`,periodo_hasta:`${hoy}T23:59:59`,total_efectivo_sistema:totalSistema,total_transferencia:tots.transferencia,total_tarjeta:tots.tarjeta,total_cuenta_corriente:tots.cta,total_ventas_sistema:v.reduce((s,x)=>s+Number(x.total),0),total_cobros_sistema:totalCobros,efectivo_contado:totalContado,diferencia:totalContado-totalSistema,detalle_billetes:detalleBilletes,notas});
+  if(error){mostrarAlerta('Error: '+error.message,'error');return;}
+  mostrarAlerta('Arqueo guardado ✓','exito');
+  BILLETES.forEach(b=>{const el=document.getElementById('bill_'+b);if(el)el.value='0';});
+  if(document.getElementById('arqueoNotas'))document.getElementById('arqueoNotas').value='';
+  actualizarConteo();
+  await cargarHistorialArqueos();
+}
+
+async function cargarHistorialArqueos(){
+  const{data}=await sb.from('arqueos').select('*').eq('empresa_id',empresaId).order('created_at',{ascending:false}).limit(5);
+  const hist=document.getElementById('historialArqueos');const lista=document.getElementById('listaArqueos');
+  if(!data?.length){hist.style.display='none';return;}
+  hist.style.display='block';
+  lista.innerHTML=data.map(a=>{const dif=Number(a.diferencia||0);const esC=Math.abs(dif)<1;return`<div class="arqueo-historial-item"><div><div style="font-size:13px;font-weight:700">${formatoFecha(a.fecha+'T12:00:00')} · ${a.turno}</div><div style="font-size:11px;color:var(--texto-suave)">Sistema: ${formatoPeso(a.total_efectivo_sistema)} · Contado: ${formatoPeso(a.efectivo_contado)}${a.notas?` · ${a.notas}`:''}</div></div><span class="badge ${esC?'badge-verde':'badge-rojo'}">${dif>=0?'+':''}${formatoPeso(dif)}</span></div>`;}).join('');
+}
+
+async function exportarArqueoPDF(){
+  const{jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const W=210;let y=15;const nombreEmpresa=empresa?.nombre||'Stockia';
+  doc.setFillColor(16,185,129);doc.rect(0,0,W,28,'F');
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(20);doc.text('Stockia',14,12);
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text('Sistema de gestión',14,18);
+  doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text(nombreEmpresa,W-14,12,{align:'right'});
+  doc.setFontSize(8);doc.text('Arqueo de Caja',W-14,18,{align:'right'});y=36;
+  doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.setFontSize(13);
+  doc.text(`Arqueo — ${new Date().toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})}`,14,y);y+=8;
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text(`Generado: ${new Date().toLocaleString('es-AR')}`,14,y);y+=10;
+  doc.save(`stockia-arqueo-${hoyISO()}.pdf`);
+  mostrarAlerta('PDF generado ✓','exito');
+}
+
+// Helpers
+function limpiarErrorCodigoVenta(){document.getElementById('ventaErrCodigo')?.classList.remove('visible');}
+function usarSugeridoVenta(){const s=document.getElementById('ventaCodigoSugerido');if(s?.dataset?.valor)document.getElementById('ventaCodigo').value=s.dataset.valor;}
 </script>
 </body>
 </html>
