@@ -271,6 +271,39 @@
           </div>
         </div>
 
+        <!-- Modo de carga de ventas -->
+        <div class="funcion-card">
+          <div class="funcion-header">
+            <div class="funcion-titulo">🛒 Modo de carga de ventas</div>
+          </div>
+          <div style="font-size:12px;color:var(--texto-suave);margin-bottom:10px">
+            Definí cómo los operadores registran las ventas en esta empresa.
+          </div>
+          <div class="funcion-opciones visible" style="padding-top:0;border-top:none">
+            <div class="funcion-opcion">
+              <div>
+                <div class="funcion-opcion-label">📦 Solo individual</div>
+                <div class="funcion-opcion-desc">Un artículo por venta. Ideal para electrodomésticos, ropa, artículos de alto valor con negociación propia.</div>
+              </div>
+              <input type="radio" name="fnModoVentas" id="fnModoIndividual" value="individual" style="width:18px;height:18px;cursor:pointer">
+            </div>
+            <div class="funcion-opcion">
+              <div>
+                <div class="funcion-opcion-label">🛒 Solo carrito / ticket</div>
+                <div class="funcion-opcion-desc">Múltiples artículos por venta. Ideal para kioscos, almacenes, mayoristas de alimentos, ferreterías.</div>
+              </div>
+              <input type="radio" name="fnModoVentas" id="fnModoCarrito" value="carrito" style="width:18px;height:18px;cursor:pointer">
+            </div>
+            <div class="funcion-opcion" style="border-bottom:none">
+              <div>
+                <div class="funcion-opcion-label">⚡ Ambos</div>
+                <div class="funcion-opcion-desc">El operador elige al momento. Aparecen dos botones: "Nueva Venta" y "Ticket/Carrito".</div>
+              </div>
+              <input type="radio" name="fnModoVentas" id="fnModoAmbos" value="ambos" style="width:18px;height:18px;cursor:pointer">
+            </div>
+          </div>
+        </div>
+
         <!-- Arqueo de caja -->
         <div class="funcion-card">
           <div class="funcion-header">
@@ -623,6 +656,11 @@
       // Mostrar/ocultar opciones arqueo
       document.getElementById('opcionesArqueo')?.classList.toggle('visible', cf.arqueo_caja || false);
 
+      // Modo de carga de ventas (individual / carrito / ambos)
+      const modoVentas = cf.modo_ventas || 'individual';
+      const radioModo  = document.querySelector(`input[name="fnModoVentas"][value="${modoVentas}"]`);
+      if (radioModo) radioModo.checked = true;
+
       // Módulos
       const modulos = emp.modulos_habilitados || {};
       document.getElementById('editModulos').innerHTML = modulosDisponibles.map(m => `
@@ -665,6 +703,7 @@
           arqueo_quien:            document.getElementById('fnArqueoQuien').value,
           arqueo_turnos:           document.getElementById('fnArqueoTurnos').value,
           arqueo_registra_fisico:  document.getElementById('fnArqueoFisico').checked,
+          modo_ventas:             document.querySelector('input[name="fnModoVentas"]:checked')?.value || 'individual',
         },
       }).eq('id', id);
       if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }

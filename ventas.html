@@ -144,7 +144,10 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <button class="btn-resumen" id="btnResumen" style="display:none" onclick="togglePanel('resumen')">📊 Resumen</button>
         <button class="btn-arqueo"  id="btnArqueo"  style="display:none" onclick="togglePanel('arqueo')">🏦 Arqueo</button>
-        <button class="btn btn-acento" onclick="abrirNuevaVenta()">➕ Nueva Venta</button>
+        <!-- Botones de nueva venta — se muestran según modo_ventas configurado -->
+        <button class="btn btn-secundario" id="btnNuevaVentaIndividual" style="display:none" onclick="abrirVentaIndividual()">📦 Venta individual</button>
+        <button class="btn btn-acento"     id="btnNuevaVentaCarrito"    style="display:none" onclick="abrirCarrito()">🛒 Ticket / Carrito</button>
+        <button class="btn btn-acento"     id="btnNuevaVentaUnico"      style="display:none" onclick="abrirNuevaVenta()">➕ Nueva Venta</button>
       </div>
     </div>
 
@@ -556,30 +559,49 @@ function fechaParaInput(f) { if(!f)return hoyISO(); return new Date(f).toISOStri
   tieneClientes    = empresa?.modulos_habilitados?.clientes !== false;
   _configFunciones = empresa?.config_funciones || {};
 
+  // ── Modo de ventas ────────────────────────────────────────
+  // modo_ventas: 'individual' | 'carrito' | 'ambos'
+  // Si no está configurado: kiosco_almacen → carrito, mayorista → individual
+  const modoVentas = _configFunciones.modo_ventas ||
+    (kiosco ? 'carrito' : 'individual');
+  const usaIndividual = modoVentas === 'individual' || modoVentas === 'ambos';
+  const usaCarrito    = modoVentas === 'carrito'    || modoVentas === 'ambos';
+
   if (empresa?.modulos_habilitados?.ventas === false) {
     document.querySelector('.main-content').innerHTML = `<div class="estado-vacio" style="padding-top:80px"><div class="estado-vacio-icono">🔒</div><div class="estado-vacio-titulo">Módulo deshabilitado</div><a href="dashboard.html" class="btn btn-ghost mt-16">← Volver</a></div>`;
     return;
   }
   construirNav();
 
-  // Subtítulo según modo
+  // ── Subtítulo ─────────────────────────────────────────────
+  const subtituloMap = {
+    individual: 'Historial y registro de ventas',
+    carrito:    '🛒 Ticket multi-artículo',
+    ambos:      'Venta individual o ticket multi-artículo',
+  };
   document.getElementById('subtituloVentas').textContent =
-    kiosco ? '🛒 Modo kiosco — ticket multi-artículo' : 'Historial y registro de ventas';
+    subtituloMap[modoVentas] || 'Historial y registro de ventas';
 
   document.getElementById('lblArtVenta').textContent =
     (empresa?.modulo_articulos_nombre||'Artículos').slice(0,-1) + ' *';
 
-  if (kiosco && !tieneClientes) {
-    document.getElementById('thClienteCol').style.display = 'none';
-  }
-  if (!kiosco) {
-    // Modo mayorista: ocultar columna cliente si no hay módulo
-    if (!tieneClientes) {
-      document.getElementById('grupoClienteVenta').style.display = 'none';
-      document.getElementById('thClienteCol').style.display = 'none';
-    }
+  // ── Columna cliente en tabla ───────────────────────────────
+  if (!tieneClientes) {
+    document.getElementById('thClienteCol').style.display      = 'none';
+    document.getElementById('grupoClienteVenta').style.display = 'none';
   }
 
+  // ── Botones nueva venta según modo ────────────────────────
+  if (modoVentas === 'ambos') {
+    // Dos botones separados
+    document.getElementById('btnNuevaVentaIndividual').style.display = 'flex';
+    document.getElementById('btnNuevaVentaCarrito').style.display    = 'flex';
+  } else {
+    // Un solo botón genérico
+    document.getElementById('btnNuevaVentaUnico').style.display = 'inline-flex';
+  }
+
+  // ── Resumen y arqueo ──────────────────────────────────────
   if (_configFunciones.resumen_ventas) document.getElementById('btnResumen').style.display = 'flex';
   if (_configFunciones.arqueo_caja) {
     document.getElementById('btnArqueo').style.display = 'flex';
@@ -598,7 +620,10 @@ function fechaParaInput(f) { if(!f)return hoyISO(); return new Date(f).toISOStri
 // ABRIR NUEVA VENTA — decide qué modal mostrar
 // ════════════════════════════════════════════════════════════
 async function abrirNuevaVenta() {
-  if (kiosco) {
+  // Llamado solo cuando hay un botón único (individual o carrito)
+  const modoVentas = _configFunciones.modo_ventas ||
+    (kiosco ? 'carrito' : 'individual');
+  if (modoVentas === 'carrito') {
     await abrirCarrito();
   } else {
     await abrirVentaIndividual();
