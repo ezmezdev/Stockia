@@ -1348,51 +1348,107 @@ async function calcularResumen(){
 
 function exportarResumenPDF(){
   if(!_datosResumen){mostrarAlerta('Generá el resumen primero','info');return;}
+  try {
   const{jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   const W=210;let y=15;const nombreEmpresa=empresa?.nombre||'Stockia';
+  const sanitizePDF = t => String(t).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\x00-\x7F]/g,'');
+
   doc.setFillColor(30,58,138);doc.rect(0,0,W,28,'F');
   doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(20);doc.text('Stockia',14,12);
-  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text('Sistema de gestión',14,18);
-  doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text(nombreEmpresa,W-14,12,{align:'right'});
-  doc.setFontSize(8);doc.text('Resumen de Ventas',W-14,18,{align:'right'});y=36;
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text('Sistema de gestion de inventario',14,18);
+  doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text(sanitizePDF(nombreEmpresa),W-14,12,{align:'right'});
+  doc.setFontSize(8);doc.text('Resumen de Ventas',W-14,18,{align:'right'});
+  y=36;
+
   doc.setTextColor(30,58,138);doc.setFont('helvetica','bold');doc.setFontSize(13);
-  // Sanitizar texto para jsPDF (no soporta tildes ni ñ con helvetica standard)
-  const sanitizePDF = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ñ/g,'n').replace(/Ñ/g,'N');
   doc.text(sanitizePDF(_datosResumen.periodo),14,y);y+=6;
   doc.setTextColor(100,100,100);doc.setFont('helvetica','normal');doc.setFontSize(9);
-  doc.text(`Generado: ${new Date().toLocaleString('es-AR')}`,14,y);y+=10;
-  const filasPago=[['Efectivo',formatoPeso(_datosResumen.tots.efectivo)],['Transferencia',formatoPeso(_datosResumen.tots.transferencia)],['Tarjeta',formatoPeso(_datosResumen.tots.tarjeta)],['Cta. corriente',formatoPeso(_datosResumen.tots.cuenta_corriente)],['TOTAL VENTAS',formatoPeso(_datosResumen.totalVentas)]];
-  doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('VENTAS NUEVAS',14,y);y+=6;
-  filasPago.forEach(([label,valor],i)=>{const esT=i===filasPago.length-1;if(esT){doc.setFillColor(30,58,138);doc.rect(14,y-4,W-28,7,'F');doc.setTextColor(255,255,255);}else{doc.setFillColor(i%2?248:255,i%2?250:255,i%2?255:255);doc.rect(14,y-4,W-28,7,'F');doc.setTextColor(30,30,30);}doc.setFont('helvetica',esT?'bold':'normal');doc.setFontSize(9);doc.text(label,18,y);doc.text(valor,W-18,y,{align:'right'});y+=7;});y+=6;
-  const filasCobros=[['Efectivo',formatoPeso(_datosResumen.cobros.efectivo)],['Transferencia',formatoPeso(_datosResumen.cobros.transferencia)],['Tarjeta',formatoPeso(_datosResumen.cobros.tarjeta)],['Cta. corriente',formatoPeso(_datosResumen.cobros.cuenta_corriente)],['TOTAL COBROS',formatoPeso(_datosResumen.totalCobros)]];
-  doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('COBROS DEL PERIODO',14,y);y+=6;
-  filasCobros.forEach(([label,valor],i)=>{const esT=i===filasCobros.length-1;if(esT){doc.setFillColor(8,145,178);doc.rect(14,y-4,W-28,7,'F');doc.setTextColor(255,255,255);}else{doc.setFillColor(i%2?248:255,i%2?250:255,i%2?255:255);doc.rect(14,y-4,W-28,7,'F');doc.setTextColor(30,30,30);}doc.setFont('helvetica',esT?'bold':'normal');doc.setFontSize(9);doc.text(label,18,y);doc.text(valor,W-18,y,{align:'right'});y+=7;});y+=6;
-  doc.setFillColor(16,185,129);doc.rect(14,y-4,W-28,10,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('INGRESO TOTAL',18,y+2);doc.text(formatoPeso(_datosResumen.totalVentas+_datosResumen.totalCobros),W-18,y+2,{align:'right'});y+=16;
-  if(_datosResumen.ventas.length&&y<220){
-    doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text('DETALLE DE VENTAS',14,y);y+=6;
-    doc.setFillColor(30,58,138);doc.rect(14,y-4,W-28,7,'F');doc.setTextColor(255,255,255);doc.setFontSize(8);
-    ['Cod.','Fecha','Cliente','Articulo','F.Pago','Total','Saldo'].forEach((h,i)=>{const xs=[18,35,60,100,135,162,185];doc.text(h,xs[i],y);});y+=7;
+  doc.text('Generado: '+new Date().toLocaleDateString('es-AR'),14,y);y+=10;
+
+  // ── Ventas nuevas ──────────────────────────────────────────
+  const filasPago=[
+    ['Efectivo',     formatoPeso(_datosResumen.tots.efectivo)],
+    ['Transferencia',formatoPeso(_datosResumen.tots.transferencia)],
+    ['Tarjeta',      formatoPeso(_datosResumen.tots.tarjeta)],
+    ['Cta. corriente',formatoPeso(_datosResumen.tots.cuenta_corriente)],
+    ['TOTAL VENTAS', formatoPeso(_datosResumen.totalVentas)],
+  ];
+  doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.setFontSize(11);
+  doc.text('VENTAS NUEVAS',14,y);y+=6;
+  filasPago.forEach(([label,valor],i)=>{
+    const esT=i===filasPago.length-1;
+    if(esT){doc.setFillColor(30,58,138);doc.rect(14,y-4,W-28,7,'F');doc.setTextColor(255,255,255);}
+    else{doc.setFillColor(i%2?248:255,i%2?250:255,i%2?255:255);doc.rect(14,y-4,W-28,7,'F');doc.setTextColor(30,30,30);}
+    doc.setFont('helvetica',esT?'bold':'normal');doc.setFontSize(9);
+    doc.text(label,18,y);doc.text(valor,W-18,y,{align:'right'});y+=7;
+  });y+=6;
+
+  // ── Cobros ─────────────────────────────────────────────────
+  const filasCobros=[
+    ['Efectivo',     formatoPeso(_datosResumen.cobros.efectivo)],
+    ['Transferencia',formatoPeso(_datosResumen.cobros.transferencia)],
+    ['Tarjeta',      formatoPeso(_datosResumen.cobros.tarjeta)],
+    ['Cta. corriente',formatoPeso(_datosResumen.cobros.cuenta_corriente)],
+    ['TOTAL COBROS', formatoPeso(_datosResumen.totalCobros)],
+  ];
+  doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.setFontSize(11);
+  doc.text('COBROS DEL PERIODO',14,y);y+=6;
+  filasCobros.forEach(([label,valor],i)=>{
+    const esT=i===filasCobros.length-1;
+    if(esT){doc.setFillColor(8,145,178);doc.rect(14,y-4,W-28,7,'F');doc.setTextColor(255,255,255);}
+    else{doc.setFillColor(i%2?248:255,i%2?250:255,i%2?255:255);doc.rect(14,y-4,W-28,7,'F');doc.setTextColor(30,30,30);}
+    doc.setFont('helvetica',esT?'bold':'normal');doc.setFontSize(9);
+    doc.text(label,18,y);doc.text(valor,W-18,y,{align:'right'});y+=7;
+  });y+=6;
+
+  // ── Ingreso total ──────────────────────────────────────────
+  doc.setFillColor(16,185,129);doc.rect(14,y-4,W-28,10,'F');
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(12);
+  doc.text('INGRESO TOTAL DEL PERIODO',18,y+2);
+  doc.text(formatoPeso(_datosResumen.totalVentas+_datosResumen.totalCobros),W-18,y+2,{align:'right'});
+  y+=16;
+
+  // ── Detalle de ventas ──────────────────────────────────────
+  if(_datosResumen.ventas.length && y<220){
+    doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.setFontSize(10);
+    doc.text('DETALLE DE VENTAS',14,y);y+=6;
+    doc.setFillColor(30,58,138);doc.rect(14,y-4,W-28,7,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(8);
+    const cols=['Cod.','Fecha','Cliente','Articulo','Pago','Total','Saldo'];
+    const xs=[18,35,60,100,135,160,182];
+    cols.forEach((h,i)=>doc.text(h,xs[i],y));y+=7;
     _datosResumen.ventas.forEach((vt,i)=>{
       if(y>270){doc.addPage();y=20;}
       doc.setFillColor(i%2?248:255,i%2?250:255,i%2?255:255);doc.rect(14,y-4,W-28,7,'F');
       doc.setTextColor(30,30,30);doc.setFont('helvetica','normal');doc.setFontSize(7);
-      const xs=[18,35,60,100,135,162,185];
       const row=[
-        (vt.codigo_venta||'—').substring(0,8),
-        formatoFecha((vt.fecha_venta||vt.created_at)+'T12:00:00'),
+        sanitizePDF(vt.codigo_venta||'-').substring(0,8),
+        (vt.fecha_venta||vt.created_at||'').substring(0,10),
         sanitizePDF((vt.clientes?.nombre||'Cons.final').substring(0,18)),
         sanitizePDF((vt.articulo_nombre||'-').substring(0,20)),
-        (vt.forma_pago||'').substring(0,10),
-        formatoPeso(vt.total).substring(0,12),
-        formatoPeso(vt.saldo).substring(0,12),
+        sanitizePDF(vt.forma_pago||'').substring(0,10),
+        formatoPeso(vt.total),
+        formatoPeso(vt.saldo),
       ];
-      row.forEach((v,j)=>doc.text(v,xs[j],y));y+=7;
+      row.forEach((v,j)=>doc.text(String(v),xs[j],y));y+=7;
     });
   }
-  for(let i=1;i<=totalPags;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(150,150,150);doc.text(`Stockia · ${nombreEmpresa} · Pág. ${i}/${totalPags}`,W/2,290,{align:'center'});}
-  doc.save(`stockia-resumen-${hoyISO()}.pdf`);
+
+  // ── Pie de página ──────────────────────────────────────────
+  const totalPags=doc.internal.getNumberOfPages();
+  for(let i=1;i<=totalPags;i++){
+    doc.setPage(i);
+    doc.setFontSize(7);doc.setTextColor(150,150,150);
+    doc.text('Stockia · '+sanitizePDF(nombreEmpresa)+' · Pag. '+i+'/'+totalPags,W/2,290,{align:'center'});
+  }
+
+  doc.save('stockia-resumen-'+hoyISO()+'.pdf');
   mostrarAlerta('PDF generado ✓','exito');
+  } catch(err) {
+    mostrarAlerta('Error al generar PDF: '+err.message,'error');
+    console.error('PDF error:',err);
+  }
 }
 
 function exportarResumenExcel(){
