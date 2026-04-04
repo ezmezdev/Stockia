@@ -407,8 +407,9 @@
           await sb.from('mensajes_sistema').update({ activo: false }).eq('id', msg.id);
           continue;
         }
-        // Si modo usuario: saltar si este user ya lo leyó
-        if (msg.modo_cierre === 'usuario') {
+        // Si modo usuario (o null): saltar si este user ya lo leyó
+        const modo = msg.modo_cierre || 'usuario';
+        if (modo === 'usuario') {
           const leidoPor = msg.leido_por || [];
           if (leidoPor.includes(userId)) continue;
         }
@@ -429,7 +430,6 @@
         ? new Date(msg.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day:'2-digit', month:'long', year:'numeric' })
         : '';
 
-      // Indicador global
       const esGlobal = msg.es_global;
       document.getElementById('bannerMsgAsunto').innerHTML =
         (esGlobal ? '<span style="background:rgba(255,255,255,0.25);border-radius:4px;padding:1px 6px;font-size:11px;margin-right:6px">🌐 GLOBAL</span>' : '') +
@@ -437,7 +437,6 @@
       document.getElementById('bannerMsgFecha').textContent  = fecha;
       document.getElementById('bannerMsgTexto').textContent  = msg.mensaje;
 
-      // Indicador de cantidad si hay más de uno
       const contador = document.getElementById('bannerMsgContador');
       if (_colaMensajes.length > 1) {
         contador.style.display = 'block';
@@ -447,27 +446,34 @@
       }
 
       document.getElementById('bannerMensajeSistema').style.display = 'flex';
-
-      // Registrar lectura
-      const leidoPor = msg.leido_por || [];
-      if (!leidoPor.includes(userId)) {
-        await sb.from('mensajes_sistema').update({
-          leido_por: [...leidoPor, userId]
-        }).eq('id', msg.id);
-      }
-
-      // Guardar userId para el cierre
+      // Guardar userId y msgId para registrar lectura al cerrar
       document.getElementById('bannerMensajeSistema').dataset.userId = userId;
+      document.getElementById('bannerMensajeSistema').dataset.msgId  = msg.id;
     }
 
-    function cerrarMensajeSistema() {
+    async function cerrarMensajeSistema() {
       const userId = document.getElementById('bannerMensajeSistema').dataset.userId;
+      const msgId  = document.getElementById('bannerMensajeSistema').dataset.msgId;
+
+      // Registrar lectura AHORA (cuando el usuario cierra, no cuando se muestra)
+      if (msgId && userId) {
+        const msg = _colaMensajes[_msgActualIdx];
+        if (msg && msg.id === msgId) {
+          const leidoPor = msg.leido_por || [];
+          if (!leidoPor.includes(userId)) {
+            await sb.from('mensajes_sistema').update({
+              leido_por: [...leidoPor, userId]
+            }).eq('id', msgId);
+            // Actualizar cache local para no volver a mostrar
+            msg.leido_por = [...leidoPor, userId];
+          }
+        }
+      }
+
       _msgActualIdx++;
       if (_msgActualIdx < _colaMensajes.length) {
-        // Hay más mensajes — mostrar el siguiente
         mostrarMensajeActual(userId);
       } else {
-        // No hay más — cerrar el banner
         document.getElementById('bannerMensajeSistema').style.display = 'none';
       }
     }
