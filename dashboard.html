@@ -197,6 +197,7 @@
     </div>
     <!-- Cuerpo -->
     <div style="padding:20px">
+      <div id="bannerMsgContador" style="display:none;font-size:11px;color:var(--texto-suave);margin-bottom:8px;font-weight:600"></div>
       <div id="bannerMsgTexto" style="font-size:14px;color:var(--texto);line-height:1.6;white-space:pre-wrap"></div>
     </div>
     <div style="padding:0 20px 20px;display:flex;justify-content:flex-end">
@@ -373,59 +374,102 @@
     }
 
     // ── Mensaje del sistema ───────────────────────────────────
-    let _msgActivoId = null;
+    let _colaMensajes  = []; // cola de mensajes a mostrar
+    let _msgActualIdx  = 0;
 
     async function verificarMensajeSistema(userId) {
       if (!empresaId || !userId) return;
+      const hoy = new Date().toISOString().split('T')[0];
 
-      // Buscar mensaje activo
-      const { data: msgs } = await sb.from('mensajes_sistema')
+      // Traer mensaje individual activo de esta empresa
+      const { data: individuales } = await sb.from('mensajes_sistema')
         .select('*')
         .eq('empresa_id', empresaId)
+        .eq('es_global', false)
         .eq('activo', true)
         .order('created_at', { ascending: false })
         .limit(1);
 
-      const msg = msgs?.[0];
-      if (!msg) return;
+      // Traer mensaje global activo
+      const { data: globales } = await sb.from('mensajes_sistema')
+        .select('*')
+        .eq('es_global', true)
+        .eq('activo', true)
+        .order('created_at', { ascending: false })
+        .limit(1);
 
-      // Verificar si se desactivó por fecha
-      if (msg.modo_cierre === 'fecha' && msg.fecha_desactivacion) {
-        const hoy = new Date().toISOString().split('T')[0];
-        if (hoy > msg.fecha_desactivacion) {
-          // Desactivar automáticamente
+      _colaMensajes = [];
+
+      // Procesar cada mensaje
+      for (const msg of [...(individuales||[]), ...(globales||[])]) {
+        // Verificar si expiró por fecha
+        if (msg.modo_cierre === 'fecha' && msg.fecha_desactivacion && hoy > msg.fecha_desactivacion) {
           await sb.from('mensajes_sistema').update({ activo: false }).eq('id', msg.id);
-          return;
+          continue;
         }
+        // Si modo usuario: saltar si este user ya lo leyó
+        if (msg.modo_cierre === 'usuario') {
+          const leidoPor = msg.leido_por || [];
+          if (leidoPor.includes(userId)) continue;
+        }
+        _colaMensajes.push(msg);
       }
 
-      // Verificar si este usuario ya lo leyó (modo usuario)
-      if (msg.modo_cierre === 'usuario') {
-        const leidoPor = msg.leido_por || [];
-        if (leidoPor.includes(userId)) return; // Ya lo vio, no mostrar
-      }
-
-      // Mostrar el banner
-      _msgActivoId = msg.id;
-      const fecha = msg.fecha
-        ? new Date(msg.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day:'2-digit', month:'long', year:'numeric' })
-        : '';
-      document.getElementById('bannerMsgAsunto').textContent = msg.asunto;
-      document.getElementById('bannerMsgFecha').textContent  = fecha;
-      document.getElementById('bannerMsgTexto').textContent  = msg.mensaje;
-      document.getElementById('bannerMensajeSistema').style.display = 'flex';
-
-      // Registrar que este usuario lo vio (agregar al array leido_por)
-      const leidoPorActual = msg.leido_por || [];
-      if (!leidoPorActual.includes(userId)) {
-        await sb.from('mensajes_sistema').update({
-          leido_por: [...leidoPorActual, userId]
-        }).eq('id', msg.id);
+      if (_colaMensajes.length) {
+        _msgActualIdx = 0;
+        mostrarMensajeActual(userId);
       }
     }
 
-    async function cerrarMensajeSistema() {
-      document.getElementById('bannerMensajeSistema').style.display = 'none';
+    async function mostrarMensajeActual(userId) {
+      if (_msgActualIdx >= _colaMensajes.length) return;
+      const msg = _colaMensajes[_msgActualIdx];
+
+      const fecha = msg.fecha
+        ? new Date(msg.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day:'2-digit', month:'long', year:'numeric' })
+        : '';
+
+      // Indicador global
+      const esGlobal = msg.es_global;
+      document.getElementById('bannerMsgAsunto').innerHTML =
+        (esGlobal ? '<span style="background:rgba(255,255,255,0.25);border-radius:4px;padding:1px 6px;font-size:11px;margin-right:6px">🌐 GLOBAL</span>' : '') +
+        msg.asunto;
+      document.getElementById('bannerMsgFecha').textContent  = fecha;
+      document.getElementById('bannerMsgTexto').textContent  = msg.mensaje;
+
+      // Indicador de cantidad si hay más de uno
+      const contador = document.getElementById('bannerMsgContador');
+      if (_colaMensajes.length > 1) {
+        contador.style.display = 'block';
+        contador.textContent   = `Mensaje ${_msgActualIdx + 1} de ${_colaMensajes.length}`;
+      } else {
+        contador.style.display = 'none';
+      }
+
+      document.getElementById('bannerMensajeSistema').style.display = 'flex';
+
+      // Registrar lectura
+      const leidoPor = msg.leido_por || [];
+      if (!leidoPor.includes(userId)) {
+        await sb.from('mensajes_sistema').update({
+          leido_por: [...leidoPor, userId]
+        }).eq('id', msg.id);
+      }
+
+      // Guardar userId para el cierre
+      document.getElementById('bannerMensajeSistema').dataset.userId = userId;
+    }
+
+    function cerrarMensajeSistema() {
+      const userId = document.getElementById('bannerMensajeSistema').dataset.userId;
+      _msgActualIdx++;
+      if (_msgActualIdx < _colaMensajes.length) {
+        // Hay más mensajes — mostrar el siguiente
+        mostrarMensajeActual(userId);
+      } else {
+        // No hay más — cerrar el banner
+        document.getElementById('bannerMensajeSistema').style.display = 'none';
+      }
     }
   </script>
 </body>

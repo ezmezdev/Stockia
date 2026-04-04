@@ -95,9 +95,14 @@
           <h1 class="page-titulo">🌐 Super Admin</h1>
           <p class="page-subtitulo">Gestión global de Stockia</p>
         </div>
-        <button class="btn btn-acento" onclick="abrirModal('modalNuevaEmpresa')">
-          ➕ Nueva empresa
-        </button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" style="background:#7c3aed;color:#fff" onclick="abrirMensajeGlobal()">
+            📢 Mensaje global
+          </button>
+          <button class="btn btn-acento" onclick="abrirModal('modalNuevaEmpresa')">
+            ➕ Nueva empresa
+          </button>
+        </div>
       </div>
 
       <!-- Tabs -->
@@ -417,6 +422,69 @@
       <div class="modal-footer">
         <button class="btn btn-ghost" onclick="cerrarModal('modalPermisosUsuario')">Cancelar</button>
         <button class="btn btn-acento" onclick="guardarPermisosUsuario()">✓ Guardar permisos</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Mensaje GLOBAL (todas las empresas) -->
+  <div class="modal-overlay" id="modalMensajeGlobal" style="z-index:1050">
+    <div class="modal" style="max-width:560px">
+      <div class="modal-header" style="background:#7c3aed;color:#fff;border-radius:var(--r-lg) var(--r-lg) 0 0;margin:-20px -20px 20px -20px;padding:16px 20px">
+        <div class="modal-titulo" style="color:#fff">📢 Mensaje global — todas las empresas</div>
+        <button class="modal-cerrar" onclick="cerrarModal('modalMensajeGlobal')" style="color:#fff">✕</button>
+      </div>
+
+      <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:var(--r-md);padding:10px 14px;margin-bottom:16px;font-size:12px;color:#6d28d9">
+        🌐 Este mensaje aparecerá en <b>todas las empresas activas</b> del sistema. No reemplaza los mensajes individuales — ambos pueden convivir.
+      </div>
+
+      <div class="form-grupo">
+        <label class="form-label">📅 Fecha</label>
+        <input type="date" class="form-input" id="msgGFecha" style="max-width:180px">
+      </div>
+      <div class="form-grupo">
+        <label class="form-label">Asunto *</label>
+        <input type="text" class="form-input" id="msgGAsunto" placeholder="Ej: Actualización del sistema, Mantenimiento programado...">
+      </div>
+      <div class="form-grupo">
+        <label class="form-label">Mensaje *</label>
+        <textarea class="form-input" id="msgGTexto" rows="5" placeholder="Escribí el mensaje aquí..." style="resize:vertical;font-family:var(--font)"></textarea>
+      </div>
+
+      <div class="form-grupo">
+        <label class="form-label">¿Cuándo desaparece?</label>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px">
+            <input type="radio" name="msgGModo" value="usuario" id="msgGModoUsuario" checked>
+            <div>
+              <div style="font-weight:600">El usuario lo cierra</div>
+              <div style="font-size:11px;color:var(--texto-suave)">Cada usuario lo ve hasta que le da ✕.</div>
+            </div>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px">
+            <input type="radio" name="msgGModo" value="fecha" id="msgGModoFecha" onchange="toggleMsgGFecha()">
+            <div>
+              <div style="font-weight:600">Se desactiva en una fecha</div>
+              <div style="font-size:11px;color:var(--texto-suave)">El mensaje desaparece automáticamente.</div>
+            </div>
+          </label>
+          <div id="msgGFechaDesactivacion" style="display:none;margin-left:28px">
+            <label class="form-label" style="font-size:12px">Fecha de desactivación</label>
+            <input type="date" class="form-input" id="msgGFechaHasta" style="max-width:180px">
+          </div>
+        </div>
+      </div>
+
+      <!-- Estadísticas de lectura del global -->
+      <div id="msgGStats" style="display:none;margin-top:16px;padding-top:14px;border-top:1px solid var(--borde)">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px">📊 Estadísticas de lectura</div>
+        <div id="msgGStatsContenido" class="texto-suave" style="font-size:13px">-</div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="cerrarModal('modalMensajeGlobal')">Cancelar</button>
+        <button class="btn btn-ghost" onclick="desactivarMensajeGlobal()" id="btnDesactivarMsgG" style="display:none">🔕 Desactivar global</button>
+        <button class="btn" style="background:#7c3aed;color:#fff" onclick="enviarMensajeGlobal()">🌐 Enviar a todas</button>
       </div>
     </div>
   </div>
@@ -787,14 +855,18 @@
     }
 
     // ── Mensajes al sistema ───────────────────────────────────
-    // Cache de usuarios para mostrar quién leyó el mensaje
     let _usuariosMsgCache = [];
 
     function toggleMsgFecha() {
-      const esFecha = document.getElementById('msgModoFecha').checked;
-      document.getElementById('msgFechaDesactivacion').style.display = esFecha ? 'block' : 'none';
+      document.getElementById('msgFechaDesactivacion').style.display =
+        document.getElementById('msgModoFecha').checked ? 'block' : 'none';
+    }
+    function toggleMsgGFecha() {
+      document.getElementById('msgGFechaDesactivacion').style.display =
+        document.getElementById('msgGModoFecha').checked ? 'block' : 'none';
     }
 
+    // ── Mensaje INDIVIDUAL ────────────────────────────────────
     async function abrirMensaje(empId, empNombre) {
       document.getElementById('msgEmpId').value = empId;
       document.getElementById('msgEmpNombre').textContent = empNombre;
@@ -805,10 +877,9 @@
       document.getElementById('msgLeidoPor').style.display = 'none';
       document.getElementById('btnDesactivarMsg').style.display = 'none';
 
-      // Cargar mensaje activo existente (si hay) y usuarios de la empresa
       const [{ data: msgs }, { data: usuarios }] = await Promise.all([
         sb.from('mensajes_sistema').select('*')
-          .eq('empresa_id', empId).eq('activo', true)
+          .eq('empresa_id', empId).eq('es_global', false).eq('activo', true)
           .order('created_at', { ascending: false }).limit(1),
         sb.from('profiles').select('id,nombre,email').eq('empresa_id', empId).eq('activo', true),
       ]);
@@ -816,7 +887,6 @@
 
       const msg = msgs?.[0];
       if (msg) {
-        // Prellenar con el mensaje activo actual
         document.getElementById('msgAsunto').value = msg.asunto || '';
         document.getElementById('msgTexto').value  = msg.mensaje || '';
         if (msg.modo_cierre === 'fecha') {
@@ -826,29 +896,15 @@
         }
         document.getElementById('btnDesactivarMsg').style.display = 'inline-flex';
 
-        // Mostrar quién lo leyó
         const leidoPor = msg.leido_por || [];
         const secLeido = document.getElementById('msgLeidoPor');
-        const listaLeido = document.getElementById('msgLeidoPorLista');
         secLeido.style.display = 'block';
-        if (!leidoPor.length) {
-          listaLeido.innerHTML = '<span class="texto-suave">Nadie lo leyó todavía.</span>';
-        } else {
-          const leyeron = _usuariosMsgCache.filter(u => leidoPor.includes(u.id));
-          const noLeyeron = _usuariosMsgCache.filter(u => !leidoPor.includes(u.id));
-          listaLeido.innerHTML =
-            (leyeron.length ? leyeron.map(u =>
-              `<span class="badge badge-verde" style="margin:2px">${u.nombre}</span>`
-            ).join('') : '') +
-            (noLeyeron.length ? '<div style="margin-top:6px;font-size:11px;color:var(--texto-suave)">Sin leer: ' +
-              noLeyeron.map(u => u.nombre).join(', ') + '</div>' : '');
-        }
-      } else {
-        // Sin mensaje activo: limpiar asunto/mensaje solo si están vacíos (persistir el último)
-        // No limpiamos — el último texto queda como base para reusar
-        document.getElementById('msgLeidoPor').style.display = 'none';
+        const leyeron   = _usuariosMsgCache.filter(u => leidoPor.includes(u.id));
+        const noLeyeron = _usuariosMsgCache.filter(u => !leidoPor.includes(u.id));
+        document.getElementById('msgLeidoPorLista').innerHTML =
+          (leyeron.length ? leyeron.map(u => `<span class="badge badge-verde" style="margin:2px">${u.nombre}</span>`).join('') : '') +
+          (noLeyeron.length ? `<div style="margin-top:6px;font-size:11px;color:var(--texto-suave)">Sin leer: ${noLeyeron.map(u=>u.nombre).join(', ')}</div>` : '');
       }
-
       abrirModal('modalMensaje');
     }
 
@@ -864,35 +920,97 @@
       if (!texto)  { mostrarAlerta('El mensaje no puede estar vacío', 'error'); return; }
       if (modo === 'fecha' && !hasta) { mostrarAlerta('Elegí una fecha de desactivación', 'error'); return; }
 
-      // Desactivar mensaje anterior si existe
-      await sb.from('mensajes_sistema')
-        .update({ activo: false })
-        .eq('empresa_id', empId).eq('activo', true);
+      // Desactivar mensajes individuales anteriores de esa empresa
+      await sb.from('mensajes_sistema').update({ activo: false })
+        .eq('empresa_id', empId).eq('es_global', false).eq('activo', true);
 
-      // Insertar nuevo mensaje
       const { error } = await sb.from('mensajes_sistema').insert({
-        empresa_id:          empId,
-        asunto,
-        mensaje:             texto,
-        fecha,
-        activo:              true,
-        modo_cierre:         modo,
-        fecha_desactivacion: hasta,
-        leido_por:           [],
+        empresa_id: empId, es_global: false,
+        asunto, mensaje: texto, fecha, activo: true,
+        modo_cierre: modo, fecha_desactivacion: hasta, leido_por: [],
       });
       if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
-
       mostrarAlerta('Mensaje enviado ✓', 'exito');
       cerrarModal('modalMensaje');
     }
 
     async function desactivarMensaje() {
       const empId = document.getElementById('msgEmpId').value;
-      if (!confirm('¿Desactivar el mensaje actual? Dejará de aparecer para todos los usuarios.')) return;
+      if (!confirm('¿Desactivar el mensaje actual de esta empresa?')) return;
       await sb.from('mensajes_sistema').update({ activo: false })
-        .eq('empresa_id', empId).eq('activo', true);
+        .eq('empresa_id', empId).eq('es_global', false).eq('activo', true);
       mostrarAlerta('Mensaje desactivado ✓', 'info');
       cerrarModal('modalMensaje');
+    }
+
+    // ── Mensaje GLOBAL ────────────────────────────────────────
+    async function abrirMensajeGlobal() {
+      document.getElementById('msgGFecha').value = new Date().toISOString().split('T')[0];
+      document.getElementById('msgGModoUsuario').checked = true;
+      document.getElementById('msgGFechaDesactivacion').style.display = 'none';
+      document.getElementById('msgGFechaHasta').value = '';
+      document.getElementById('msgGStats').style.display = 'none';
+      document.getElementById('btnDesactivarMsgG').style.display = 'none';
+
+      // Cargar mensaje global activo si existe
+      const { data: msgs } = await sb.from('mensajes_sistema').select('*')
+        .eq('es_global', true).eq('activo', true)
+        .order('created_at', { ascending: false }).limit(1);
+
+      const msg = msgs?.[0];
+      if (msg) {
+        document.getElementById('msgGAsunto').value = msg.asunto || '';
+        document.getElementById('msgGTexto').value  = msg.mensaje || '';
+        if (msg.modo_cierre === 'fecha') {
+          document.getElementById('msgGModoFecha').checked = true;
+          document.getElementById('msgGFechaDesactivacion').style.display = 'block';
+          document.getElementById('msgGFechaHasta').value = msg.fecha_desactivacion || '';
+        }
+        document.getElementById('btnDesactivarMsgG').style.display = 'inline-flex';
+
+        // Estadísticas: cuántos usuarios lo leyeron en total
+        const leidoPor = msg.leido_por || [];
+        document.getElementById('msgGStats').style.display = 'block';
+        document.getElementById('msgGStatsContenido').innerHTML =
+          `<span class="badge badge-verde">${leidoPor.length} usuario${leidoPor.length!==1?'s':''} lo leyeron</span>`;
+      }
+      abrirModal('modalMensajeGlobal');
+    }
+
+    async function enviarMensajeGlobal() {
+      const asunto = document.getElementById('msgGAsunto').value.trim();
+      const texto  = document.getElementById('msgGTexto').value.trim();
+      const fecha  = document.getElementById('msgGFecha').value;
+      const modo   = document.querySelector('input[name="msgGModo"]:checked')?.value || 'usuario';
+      const hasta  = modo === 'fecha' ? document.getElementById('msgGFechaHasta').value : null;
+
+      if (!asunto) { mostrarAlerta('El asunto es obligatorio', 'error'); return; }
+      if (!texto)  { mostrarAlerta('El mensaje no puede estar vacío', 'error'); return; }
+      if (modo === 'fecha' && !hasta) { mostrarAlerta('Elegí una fecha de desactivación', 'error'); return; }
+
+      if (!confirm(`¿Enviar este mensaje a TODAS las empresas activas del sistema?\n\nAsunto: "${asunto}"`)) return;
+
+      // Desactivar globales anteriores
+      await sb.from('mensajes_sistema').update({ activo: false })
+        .eq('es_global', true).eq('activo', true);
+
+      // Insertar un solo registro global (empresa_id NULL)
+      const { error } = await sb.from('mensajes_sistema').insert({
+        empresa_id: null, es_global: true,
+        asunto, mensaje: texto, fecha, activo: true,
+        modo_cierre: modo, fecha_desactivacion: hasta, leido_por: [],
+      });
+      if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
+      mostrarAlerta('Mensaje global enviado a todas las empresas ✓', 'exito');
+      cerrarModal('modalMensajeGlobal');
+    }
+
+    async function desactivarMensajeGlobal() {
+      if (!confirm('¿Desactivar el mensaje global? Dejará de aparecer en todas las empresas.')) return;
+      await sb.from('mensajes_sistema').update({ activo: false })
+        .eq('es_global', true).eq('activo', true);
+      mostrarAlerta('Mensaje global desactivado ✓', 'info');
+      cerrarModal('modalMensajeGlobal');
     }
 
     function ingresarComoEmpresa(empresaId) {
