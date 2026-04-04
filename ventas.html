@@ -25,6 +25,51 @@
     .pago-item-monto{font-size:15px;font-weight:700;color:var(--verde);}
     .pago-item-fecha{font-size:11px;color:var(--texto-suave);}
     .pago-item-notas{font-size:11px;color:var(--texto-suave);font-style:italic;}
+
+    /* ── Filas expandibles ── */
+    .fila-venta { cursor:pointer; transition:background .15s; }
+    .fila-venta:hover { background:var(--bg) !important; }
+    .fila-expand-btn {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:22px; height:22px; border-radius:50%;
+      background:var(--bg); border:1px solid var(--borde);
+      font-size:13px; font-weight:700; color:var(--texto-suave);
+      cursor:pointer; transition:var(--transition); flex-shrink:0;
+      line-height:1; font-family:monospace;
+    }
+    .fila-expand-btn:hover { background:var(--azul-nav); color:#fff; border-color:var(--azul-nav); }
+    .fila-expand-btn.abierto { background:var(--azul-nav); color:#fff; border-color:var(--azul-nav); }
+    .fila-detalle { background:#f8faff !important; }
+    .fila-detalle td { padding:0 !important; }
+    .detalle-panel {
+      padding:10px 14px 14px 14px;
+      border-top:2px solid var(--azul-accion);
+      animation:slideDown .15s ease;
+    }
+    @keyframes slideDown {
+      from { opacity:0; transform:translateY(-6px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .detalle-items-tabla { width:100%; border-collapse:collapse; font-size:12px; }
+    .detalle-items-tabla th {
+      font-size:10px; font-weight:700; color:var(--texto-suave);
+      text-transform:uppercase; letter-spacing:.4px;
+      padding:4px 8px; border-bottom:1px solid var(--borde); text-align:left;
+    }
+    .detalle-items-tabla td { padding:6px 8px; border-bottom:1px solid var(--borde); }
+    .detalle-items-tabla tr:last-child td { border-bottom:none; }
+    .detalle-items-tabla tr.devuelto td { opacity:.4; text-decoration:line-through; }
+    .expandir-todos-bar {
+      display:flex; gap:8px; align-items:center;
+      margin-bottom:8px; font-size:12px;
+    }
+    .btn-expandir-todos {
+      background:none; border:1px solid var(--borde); border-radius:var(--r-sm);
+      padding:4px 10px; font-size:11px; font-weight:600; cursor:pointer;
+      color:var(--texto-suave); font-family:var(--font); transition:var(--transition);
+      display:flex; align-items:center; gap:4px;
+    }
+    .btn-expandir-todos:hover { background:var(--azul-nav); color:#fff; border-color:var(--azul-nav); }
     /* ── Paneles resumen/arqueo ── */
     .btn-resumen{background:var(--azul-nav);color:#fff;border:none;border-radius:var(--r-md);padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);display:flex;align-items:center;gap:6px;transition:var(--transition);}
     .btn-resumen:hover{background:#162d6e;}
@@ -246,6 +291,12 @@
     </div>
 
     <div class="card">
+      <!-- Barra expandir/comprimir todos -->
+      <div class="expandir-todos-bar" id="expandirTodosBar" style="display:none">
+        <span style="color:var(--texto-suave)">Vista rápida:</span>
+        <button class="btn-expandir-todos" onclick="expandirTodos()">＋ Expandir todos</button>
+        <button class="btn-expandir-todos" onclick="comprimirTodos()">－ Comprimir todos</button>
+      </div>
       <div class="tabla-contenedor">
         <table class="tabla">
           <thead>
@@ -981,6 +1032,8 @@ async function cargarClientesSelect() {
 
 async function cargarVentas() {
   document.getElementById('tablaVentas').innerHTML='<tr><td colspan="8"><div class="cargando"><div class="spinner"></div></div></td></tr>';
+  // Limpiar cache de ítems al recargar
+  Object.keys(_itemsCache).forEach(k => delete _itemsCache[k]);
   const{data,error}=await sb.from('ventas').select('*,clientes(nombre,codigo)')
     .eq('empresa_id',empresaId)
     .order('fecha_venta',{ascending:false})
@@ -1010,35 +1063,180 @@ function iniciarFiltros() {
   });
 }
 
+// Cache de ítems cargados para evitar consultas repetidas
+const _itemsCache = {};
+
 function renderTabla(lista) {
   const tbody=document.getElementById('tablaVentas');
+  // Mostrar/ocultar barra expandir todos
+  document.getElementById('expandirTodosBar').style.display = lista.length ? 'flex' : 'none';
+
   if(!lista.length){
     tbody.innerHTML=`<tr><td colspan="8"><div class="estado-vacio"><div class="estado-vacio-icono">💰</div><div class="estado-vacio-titulo">Sin ventas</div><button class="btn btn-acento" onclick="abrirNuevaVenta()">➕ Nueva Venta</button></div></td></tr>`;
     return;
   }
-  tbody.innerHTML=lista.map(v=>{
-    const clienteCol=(kiosco&&!tieneClientes)?'':
-      `<td>${v.clientes?`${v.clientes.nombre}${v.clientes.codigo?` <span class="badge-codigo">${v.clientes.codigo}</span>`:''}`:'<span class="texto-suave">Cons. final</span>'}</td>`;
-    const fechaMostrar=v.fecha_venta?formatoFecha(v.fecha_venta+'T12:00:00'):formatoFecha(v.created_at);
+
+  tbody.innerHTML = lista.map(v => {
+    const clienteCol = (kiosco&&!tieneClientes) ? '' :
+      `<td>${v.clientes
+        ? `${v.clientes.nombre}${v.clientes.codigo ? ` <span class="badge-codigo">${v.clientes.codigo}</span>` : ''}`
+        : '<span class="texto-suave">Cons. final</span>'
+      }</td>`;
+    const fechaMostrar = v.fecha_venta ? formatoFecha(v.fecha_venta+'T12:00:00') : formatoFecha(v.created_at);
     const artCol = v.es_carrito
       ? `<span class="badge badge-azul">🛒 ${v.articulo_nombre}</span>`
       : `${v.articulo_nombre||'-'}${v.cantidad>1?` <span class="badge badge-gris">x${v.cantidad}</span>`:''}`;
-    return `<tr>
-      <td><span class="badge-codigo">${v.codigo_venta||'—'}</span></td>
-      <td style="white-space:nowrap">${fechaMostrar}</td>
-      ${clienteCol}
-      <td class="fw-600">${artCol}</td>
-      <td><b>${formatoPeso(v.total)}</b></td>
-      <td class="${Number(v.saldo)>0?'texto-rojo fw-600':'texto-suave'}">${formatoPeso(v.saldo)}</td>
-      <td><span class="badge ${v.estado==='pagado'?'badge-verde':v.estado==='parcial'?'badge-naranja':'badge-rojo'}">${v.estado}</span></td>
-      <td><div class="tabla-acciones">
-        <button class="btn btn-sm btn-ghost" onclick="abrirDetalleVenta('${v.id}')" title="Ver detalle">📋</button>
-        ${!v.es_carrito?`<button class="btn btn-sm btn-ghost" onclick="abrirEditarVenta('${v.id}')" title="Editar">✏️</button>`:''}
-        ${Number(v.saldo)>0?`<button class="btn btn-sm btn-secundario" onclick="abrirPago('${v.id}',${v.saldo})">💵</button>`:''}
-        ${esAdmin?`<button class="btn btn-sm btn-peligro" onclick="confirmarEliminarVenta('${v.id}','${(v.articulo_nombre||'esta venta').replace(/'/g,"\\'")}')">🗑️</button>`:''}
-      </div></td>
-    </tr>`;
+    const cols = (kiosco&&!tieneClientes) ? 7 : 8;
+
+    return `
+      <tr class="fila-venta" id="fila-${v.id}" onclick="toggleDetalle('${v.id}',${cols})">
+        <td>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="fila-expand-btn" id="btn-expand-${v.id}">＋</span>
+            <span class="badge-codigo">${v.codigo_venta||'—'}</span>
+          </div>
+        </td>
+        <td style="white-space:nowrap">${fechaMostrar}</td>
+        ${clienteCol}
+        <td class="fw-600">${artCol}</td>
+        <td><b>${formatoPeso(v.total)}</b></td>
+        <td class="${Number(v.saldo)>0?'texto-rojo fw-600':'texto-suave'}">${formatoPeso(v.saldo)}</td>
+        <td><span class="badge ${v.estado==='pagado'?'badge-verde':v.estado==='parcial'?'badge-naranja':'badge-rojo'}">${v.estado}</span></td>
+        <td onclick="event.stopPropagation()">
+          <div class="tabla-acciones">
+            <button class="btn btn-sm btn-ghost" onclick="abrirDetalleVenta('${v.id}')" title="Ver detalle y pagos">📋</button>
+            ${!v.es_carrito?`<button class="btn btn-sm btn-ghost" onclick="abrirEditarVenta('${v.id}')" title="Editar">✏️</button>`:''}
+            ${Number(v.saldo)>0?`<button class="btn btn-sm btn-secundario" onclick="abrirPago('${v.id}',${v.saldo})">💵</button>`:''}
+            ${esAdmin?`<button class="btn btn-sm btn-peligro" onclick="confirmarEliminarVenta('${v.id}','${(v.articulo_nombre||'esta venta').replace(/'/g,"\\'")}')">🗑️</button>`:''}
+          </div>
+        </td>
+      </tr>
+      <tr class="fila-detalle" id="detalle-${v.id}" style="display:none">
+        <td colspan="${cols}">
+          <div class="detalle-panel" id="panel-${v.id}">
+            <div class="cargando" style="padding:8px 0"><div class="spinner"></div></div>
+          </div>
+        </td>
+      </tr>`;
   }).join('');
+}
+
+// ── Toggle expandir/colapsar fila ────────────────────────────
+async function toggleDetalle(ventaId, cols) {
+  const filaDetalle = document.getElementById(`detalle-${ventaId}`);
+  const btnExpand   = document.getElementById(`btn-expand-${ventaId}`);
+  const estaAbierto = filaDetalle.style.display !== 'none';
+
+  if (estaAbierto) {
+    filaDetalle.style.display = 'none';
+    btnExpand.textContent = '＋';
+    btnExpand.classList.remove('abierto');
+  } else {
+    filaDetalle.style.display = 'table-row';
+    btnExpand.textContent = '－';
+    btnExpand.classList.add('abierto');
+    await cargarDetallePanel(ventaId);
+  }
+}
+
+async function cargarDetallePanel(ventaId) {
+  const panel = document.getElementById(`panel-${ventaId}`);
+  if (!panel) return;
+
+  // Usar cache si ya cargamos los ítems antes
+  if (_itemsCache[ventaId]) {
+    renderDetallePanel(ventaId, _itemsCache[ventaId]);
+    return;
+  }
+
+  panel.innerHTML = '<div class="cargando" style="padding:8px 0"><div class="spinner"></div></div>';
+
+  const v = todasVentas.find(x => x.id === ventaId);
+  if (!v) return;
+
+  let items = [];
+  if (v.es_carrito) {
+    const { data } = await sb.from('venta_items').select('*')
+      .eq('venta_id', ventaId).order('created_at');
+    items = data || [];
+  } else {
+    // Venta individual — construir fila desde los datos de la venta
+    items = [{
+      articulo_nombre: v.articulo_nombre || '-',
+      cantidad:        v.cantidad || 1,
+      precio_unitario: v.precio_unitario || 0,
+      subtotal:        v.total || 0,
+      devuelto:        false,
+      _esIndividual:   true,
+    }];
+  }
+
+  _itemsCache[ventaId] = items;
+  renderDetallePanel(ventaId, items);
+}
+
+function renderDetallePanel(ventaId, items) {
+  const panel = document.getElementById(`panel-${ventaId}`);
+  if (!panel) return;
+  const v = todasVentas.find(x => x.id === ventaId);
+
+  panel.innerHTML = `
+    <table class="detalle-items-tabla">
+      <thead>
+        <tr>
+          <th>Artículo</th>
+          <th style="text-align:center">Cant.</th>
+          <th style="text-align:right">Precio unit.</th>
+          <th style="text-align:right">Subtotal</th>
+          ${v?.es_carrito && esAdmin ? '<th></th>' : ''}
+        </tr>
+      </thead>
+      <tbody>
+        ${items.map(it => `
+          <tr class="${it.devuelto ? 'devuelto' : ''}">
+            <td class="fw-600">${it.articulo_nombre}</td>
+            <td style="text-align:center">${it.cantidad}</td>
+            <td style="text-align:right">${formatoPeso(it.precio_unitario)}</td>
+            <td style="text-align:right"><b>${formatoPeso(it.subtotal)}</b></td>
+            ${v?.es_carrito && esAdmin ? `
+              <td style="text-align:right">
+                ${it.devuelto
+                  ? '<span class="badge badge-gris" style="font-size:10px">Devuelto</span>'
+                  : `<button class="btn btn-sm btn-peligro" style="font-size:10px;padding:2px 6px"
+                      onclick="event.stopPropagation();devolverItem('${it.id}','${ventaId}','${it.articulo_id}',${it.cantidad},${it.subtotal},'${(it.articulo_nombre||'').replace(/'/g,"\\'")}')"
+                    >🔄 Dev.</button>`
+                }
+              </td>` : ''}
+          </tr>`).join('')}
+      </tbody>
+    </table>
+    <div style="display:flex;justify-content:flex-end;margin-top:8px;font-size:12px;color:var(--texto-suave)">
+      ${v?.es_carrito ? `${items.filter(i=>!i.devuelto).length} ítem${items.filter(i=>!i.devuelto).length!==1?'s':''} activo${items.filter(i=>!i.devuelto).length!==1?'s':''}` : ''}
+      &nbsp;· Total: <b style="margin-left:4px;color:var(--texto)">${formatoPeso(v?.total)}</b>
+    </div>
+  `;
+}
+
+// ── Expandir / comprimir todos ────────────────────────────────
+async function expandirTodos() {
+  for (const v of todasVentas) {
+    const filaDetalle = document.getElementById(`detalle-${v.id}`);
+    const btnExpand   = document.getElementById(`btn-expand-${v.id}`);
+    if (!filaDetalle || filaDetalle.style.display !== 'none') continue;
+    filaDetalle.style.display = 'table-row';
+    btnExpand.textContent = '－';
+    btnExpand.classList.add('abierto');
+    await cargarDetallePanel(v.id);
+  }
+}
+
+function comprimirTodos() {
+  document.querySelectorAll('[id^="detalle-"]').forEach(el => {
+    const ventaId = el.id.replace('detalle-','');
+    el.style.display = 'none';
+    const btn = document.getElementById(`btn-expand-${ventaId}`);
+    if (btn) { btn.textContent = '＋'; btn.classList.remove('abierto'); }
+  });
 }
 
 // ════════════════════════════════════════════════════════════
