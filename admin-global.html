@@ -421,6 +421,72 @@
     </div>
   </div>
 
+  <!-- MODAL: Mensaje a empresa -->
+  <div class="modal-overlay" id="modalMensaje" style="z-index:1050">
+    <div class="modal" style="max-width:560px">
+      <div class="modal-header" style="background:#7c3aed;color:#fff;border-radius:var(--r-lg) var(--r-lg) 0 0;margin:-20px -20px 20px -20px;padding:16px 20px">
+        <div class="modal-titulo" style="color:#fff">📢 Enviar mensaje al sistema</div>
+        <button class="modal-cerrar" onclick="cerrarModal('modalMensaje')" style="color:#fff">✕</button>
+      </div>
+      <input type="hidden" id="msgEmpId">
+
+      <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:var(--r-md);padding:10px 14px;margin-bottom:16px;font-size:12px;color:#6d28d9">
+        <b id="msgEmpNombre">-</b> — El mensaje aparecerá a <b>todos los usuarios</b> de esta empresa al entrar al sistema.
+      </div>
+
+      <div class="form-grupo">
+        <label class="form-label">📅 Fecha</label>
+        <input type="date" class="form-input" id="msgFecha" style="max-width:180px">
+      </div>
+
+      <div class="form-grupo">
+        <label class="form-label">Asunto *</label>
+        <input type="text" class="form-input" id="msgAsunto" placeholder="Ej: Actualización del sistema, Aviso importante...">
+      </div>
+
+      <div class="form-grupo">
+        <label class="form-label">Mensaje *</label>
+        <textarea class="form-input" id="msgTexto" rows="5" placeholder="Escribí el mensaje aquí..." style="resize:vertical;font-family:var(--font)"></textarea>
+      </div>
+
+      <div class="form-grupo">
+        <label class="form-label">¿Cuándo desaparece el mensaje?</label>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px">
+            <input type="radio" name="msgModo" value="usuario" id="msgModoUsuario" checked>
+            <div>
+              <div style="font-weight:600">El usuario lo cierra</div>
+              <div style="font-size:11px;color:var(--texto-suave)">Cada usuario lo ve hasta que le da ✕. No vuelve a aparecer.</div>
+            </div>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px">
+            <input type="radio" name="msgModo" value="fecha" id="msgModoFecha" onchange="toggleMsgFecha()">
+            <div>
+              <div style="font-weight:600">Se desactiva en una fecha</div>
+              <div style="font-size:11px;color:var(--texto-suave)">El mensaje desaparece automáticamente en la fecha elegida.</div>
+            </div>
+          </label>
+          <div id="msgFechaDesactivacion" style="display:none;margin-left:28px">
+            <label class="form-label" style="font-size:12px">Fecha de desactivación</label>
+            <input type="date" class="form-input" id="msgFechaHasta" style="max-width:180px">
+          </div>
+        </div>
+      </div>
+
+      <!-- Quién lo leyó -->
+      <div id="msgLeidoPor" style="display:none;margin-top:16px;padding-top:14px;border-top:1px solid var(--borde)">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px">👁 Leído por</div>
+        <div id="msgLeidoPorLista" class="texto-suave" style="font-size:13px">-</div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="cerrarModal('modalMensaje')">Cancelar</button>
+        <button class="btn btn-ghost" onclick="desactivarMensaje()" id="btnDesactivarMsg" style="display:none">🔕 Desactivar</button>
+        <button class="btn" style="background:#7c3aed;color:#fff" onclick="enviarMensaje()">📢 Enviar mensaje</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: Usuarios de empresa -->
   <div class="modal-overlay" id="modalUsuariosEmpresa">
     <div class="modal" style="max-height:95vh">
@@ -583,6 +649,7 @@
               <button class="btn btn-sm btn-ghost" onclick="abrirEditarEmpresa('${emp.id}')">✏️ Editar</button>
               <button class="btn btn-sm btn-ghost" onclick="abrirUsuariosEmpresa('${emp.id}','${emp.nombre}')">👥 Usuarios</button>
               <button class="btn btn-sm btn-naranja" onclick="exportarEmpresaJSON('${emp.id}','${emp.nombre}')">⬇️ Backup</button>
+              <button class="btn btn-sm" style="background:#7c3aed;color:#fff" onclick="abrirMensaje('${emp.id}','${emp.nombre.replace(/'/g,"\\'")}')">📢 Mensaje</button>
             </div>
             <button class="btn btn-sm btn-peligro" onclick="toggleEmpresaActiva('${emp.id}', ${emp.activa})">
               ${emp.activa ? '🔒 Desactivar' : '✓ Activar'}
@@ -717,6 +784,115 @@
       if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
       mostrarAlerta(activa ? 'Empresa desactivada' : 'Empresa activada ✓', activa ? 'info' : 'exito');
       cargarEmpresas();
+    }
+
+    // ── Mensajes al sistema ───────────────────────────────────
+    // Cache de usuarios para mostrar quién leyó el mensaje
+    let _usuariosMsgCache = [];
+
+    function toggleMsgFecha() {
+      const esFecha = document.getElementById('msgModoFecha').checked;
+      document.getElementById('msgFechaDesactivacion').style.display = esFecha ? 'block' : 'none';
+    }
+
+    async function abrirMensaje(empId, empNombre) {
+      document.getElementById('msgEmpId').value = empId;
+      document.getElementById('msgEmpNombre').textContent = empNombre;
+      document.getElementById('msgFecha').value = new Date().toISOString().split('T')[0];
+      document.getElementById('msgModoUsuario').checked = true;
+      document.getElementById('msgFechaDesactivacion').style.display = 'none';
+      document.getElementById('msgFechaHasta').value = '';
+      document.getElementById('msgLeidoPor').style.display = 'none';
+      document.getElementById('btnDesactivarMsg').style.display = 'none';
+
+      // Cargar mensaje activo existente (si hay) y usuarios de la empresa
+      const [{ data: msgs }, { data: usuarios }] = await Promise.all([
+        sb.from('mensajes_sistema').select('*')
+          .eq('empresa_id', empId).eq('activo', true)
+          .order('created_at', { ascending: false }).limit(1),
+        sb.from('profiles').select('id,nombre,email').eq('empresa_id', empId).eq('activo', true),
+      ]);
+      _usuariosMsgCache = usuarios || [];
+
+      const msg = msgs?.[0];
+      if (msg) {
+        // Prellenar con el mensaje activo actual
+        document.getElementById('msgAsunto').value = msg.asunto || '';
+        document.getElementById('msgTexto').value  = msg.mensaje || '';
+        if (msg.modo_cierre === 'fecha') {
+          document.getElementById('msgModoFecha').checked = true;
+          document.getElementById('msgFechaDesactivacion').style.display = 'block';
+          document.getElementById('msgFechaHasta').value = msg.fecha_desactivacion || '';
+        }
+        document.getElementById('btnDesactivarMsg').style.display = 'inline-flex';
+
+        // Mostrar quién lo leyó
+        const leidoPor = msg.leido_por || [];
+        const secLeido = document.getElementById('msgLeidoPor');
+        const listaLeido = document.getElementById('msgLeidoPorLista');
+        secLeido.style.display = 'block';
+        if (!leidoPor.length) {
+          listaLeido.innerHTML = '<span class="texto-suave">Nadie lo leyó todavía.</span>';
+        } else {
+          const leyeron = _usuariosMsgCache.filter(u => leidoPor.includes(u.id));
+          const noLeyeron = _usuariosMsgCache.filter(u => !leidoPor.includes(u.id));
+          listaLeido.innerHTML =
+            (leyeron.length ? leyeron.map(u =>
+              `<span class="badge badge-verde" style="margin:2px">${u.nombre}</span>`
+            ).join('') : '') +
+            (noLeyeron.length ? '<div style="margin-top:6px;font-size:11px;color:var(--texto-suave)">Sin leer: ' +
+              noLeyeron.map(u => u.nombre).join(', ') + '</div>' : '');
+        }
+      } else {
+        // Sin mensaje activo: limpiar asunto/mensaje solo si están vacíos (persistir el último)
+        // No limpiamos — el último texto queda como base para reusar
+        document.getElementById('msgLeidoPor').style.display = 'none';
+      }
+
+      abrirModal('modalMensaje');
+    }
+
+    async function enviarMensaje() {
+      const empId  = document.getElementById('msgEmpId').value;
+      const asunto = document.getElementById('msgAsunto').value.trim();
+      const texto  = document.getElementById('msgTexto').value.trim();
+      const fecha  = document.getElementById('msgFecha').value;
+      const modo   = document.querySelector('input[name="msgModo"]:checked')?.value || 'usuario';
+      const hasta  = modo === 'fecha' ? document.getElementById('msgFechaHasta').value : null;
+
+      if (!asunto) { mostrarAlerta('El asunto es obligatorio', 'error'); return; }
+      if (!texto)  { mostrarAlerta('El mensaje no puede estar vacío', 'error'); return; }
+      if (modo === 'fecha' && !hasta) { mostrarAlerta('Elegí una fecha de desactivación', 'error'); return; }
+
+      // Desactivar mensaje anterior si existe
+      await sb.from('mensajes_sistema')
+        .update({ activo: false })
+        .eq('empresa_id', empId).eq('activo', true);
+
+      // Insertar nuevo mensaje
+      const { error } = await sb.from('mensajes_sistema').insert({
+        empresa_id:          empId,
+        asunto,
+        mensaje:             texto,
+        fecha,
+        activo:              true,
+        modo_cierre:         modo,
+        fecha_desactivacion: hasta,
+        leido_por:           [],
+      });
+      if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
+
+      mostrarAlerta('Mensaje enviado ✓', 'exito');
+      cerrarModal('modalMensaje');
+    }
+
+    async function desactivarMensaje() {
+      const empId = document.getElementById('msgEmpId').value;
+      if (!confirm('¿Desactivar el mensaje actual? Dejará de aparecer para todos los usuarios.')) return;
+      await sb.from('mensajes_sistema').update({ activo: false })
+        .eq('empresa_id', empId).eq('activo', true);
+      mostrarAlerta('Mensaje desactivado ✓', 'info');
+      cerrarModal('modalMensaje');
     }
 
     function ingresarComoEmpresa(empresaId) {

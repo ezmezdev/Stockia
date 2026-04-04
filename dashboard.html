@@ -161,7 +161,55 @@
     <footer class="app-footer">© <span class="anio-actual"></span> Stockia. Todos los derechos reservados.</footer>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- ═══ BANNER: Mensaje del sistema ═══ -->
+<div id="bannerMensajeSistema" style="
+  display:none;
+  position:fixed;
+  top:0;left:0;right:0;bottom:0;
+  z-index:2000;
+  background:rgba(0,0,0,0.55);
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+">
+  <div style="
+    background:#fff;
+    border-radius:var(--r-lg);
+    max-width:520px;
+    width:100%;
+    box-shadow:0 20px 60px rgba(0,0,0,0.3);
+    overflow:hidden;
+  ">
+    <!-- Header morado -->
+    <div style="background:#7c3aed;padding:16px 20px;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:22px">📢</span>
+        <div>
+          <div style="color:#fff;font-weight:700;font-size:15px" id="bannerMsgAsunto">-</div>
+          <div style="color:#ddd6fe;font-size:11px" id="bannerMsgFecha">-</div>
+        </div>
+      </div>
+      <button onclick="cerrarMensajeSistema()" style="
+        background:rgba(255,255,255,0.2);border:none;color:#fff;
+        width:30px;height:30px;border-radius:50%;cursor:pointer;
+        font-size:16px;display:flex;align-items:center;justify-content:center;
+      ">✕</button>
+    </div>
+    <!-- Cuerpo -->
+    <div style="padding:20px">
+      <div id="bannerMsgTexto" style="font-size:14px;color:var(--texto);line-height:1.6;white-space:pre-wrap"></div>
+    </div>
+    <div style="padding:0 20px 20px;display:flex;justify-content:flex-end">
+      <button onclick="cerrarMensajeSistema()" style="
+        background:#7c3aed;color:#fff;border:none;
+        padding:10px 24px;border-radius:var(--r-md);
+        font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);
+      ">Entendido ✓</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/global.js?v=4.0"></script>
   <script>
     let empresaId = null;
@@ -204,6 +252,9 @@
 
       // Construir nav
       construirNav();
+
+      // ── Mensaje del sistema ───────────────────────────────────
+      if (empresaId) verificarMensajeSistema(sesion.perfil?.id);
 
       // Adaptar textos de artículos
       const nArt = empresa?.modulo_articulos_nombre || 'Artículos';
@@ -319,6 +370,62 @@
           <b>${c.nombre}</b> <span class="texto-suave">${c.telefono||''} ${c.dni?'· DNI: '+c.dni:''}</span>
         </div>
       `).join('');
+    }
+
+    // ── Mensaje del sistema ───────────────────────────────────
+    let _msgActivoId = null;
+
+    async function verificarMensajeSistema(userId) {
+      if (!empresaId || !userId) return;
+
+      // Buscar mensaje activo
+      const { data: msgs } = await sb.from('mensajes_sistema')
+        .select('*')
+        .eq('empresa_id', empresaId)
+        .eq('activo', true)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      const msg = msgs?.[0];
+      if (!msg) return;
+
+      // Verificar si se desactivó por fecha
+      if (msg.modo_cierre === 'fecha' && msg.fecha_desactivacion) {
+        const hoy = new Date().toISOString().split('T')[0];
+        if (hoy > msg.fecha_desactivacion) {
+          // Desactivar automáticamente
+          await sb.from('mensajes_sistema').update({ activo: false }).eq('id', msg.id);
+          return;
+        }
+      }
+
+      // Verificar si este usuario ya lo leyó (modo usuario)
+      if (msg.modo_cierre === 'usuario') {
+        const leidoPor = msg.leido_por || [];
+        if (leidoPor.includes(userId)) return; // Ya lo vio, no mostrar
+      }
+
+      // Mostrar el banner
+      _msgActivoId = msg.id;
+      const fecha = msg.fecha
+        ? new Date(msg.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day:'2-digit', month:'long', year:'numeric' })
+        : '';
+      document.getElementById('bannerMsgAsunto').textContent = msg.asunto;
+      document.getElementById('bannerMsgFecha').textContent  = fecha;
+      document.getElementById('bannerMsgTexto').textContent  = msg.mensaje;
+      document.getElementById('bannerMensajeSistema').style.display = 'flex';
+
+      // Registrar que este usuario lo vio (agregar al array leido_por)
+      const leidoPorActual = msg.leido_por || [];
+      if (!leidoPorActual.includes(userId)) {
+        await sb.from('mensajes_sistema').update({
+          leido_por: [...leidoPorActual, userId]
+        }).eq('id', msg.id);
+      }
+    }
+
+    async function cerrarMensajeSistema() {
+      document.getElementById('bannerMensajeSistema').style.display = 'none';
     }
   </script>
 </body>
