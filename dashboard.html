@@ -452,20 +452,34 @@
     }
 
     async function cerrarMensajeSistema() {
-      const userId = document.getElementById('bannerMensajeSistema').dataset.userId;
-      const msgId  = document.getElementById('bannerMensajeSistema').dataset.msgId;
+      const userId    = document.getElementById('bannerMensajeSistema').dataset.userId;
+      const msgId     = document.getElementById('bannerMensajeSistema').dataset.msgId;
 
-      // Registrar lectura AHORA (cuando el usuario cierra, no cuando se muestra)
+      // Registrar lectura al cerrar
       if (msgId && userId) {
         const msg = _colaMensajes[_msgActualIdx];
         if (msg && msg.id === msgId) {
           const leidoPor = msg.leido_por || [];
+          const updateData = {};
+
+          // Siempre guardar el userId
           if (!leidoPor.includes(userId)) {
-            await sb.from('mensajes_sistema').update({
-              leido_por: [...leidoPor, userId]
-            }).eq('id', msgId);
-            // Actualizar cache local para no volver a mostrar
-            msg.leido_por = [...leidoPor, userId];
+            updateData.leido_por = [...leidoPor, userId];
+            msg.leido_por = updateData.leido_por;
+          }
+
+          // Para mensajes globales: guardar también el empresa_id
+          // Así la lectura por empresa es directa sin cruzar tablas
+          if (msg.es_global && empresaId) {
+            const empresasVieron = msg.empresas_que_vieron || [];
+            if (!empresasVieron.includes(empresaId)) {
+              updateData.empresas_que_vieron = [...empresasVieron, empresaId];
+              msg.empresas_que_vieron = updateData.empresas_que_vieron;
+            }
+          }
+
+          if (Object.keys(updateData).length) {
+            await sb.from('mensajes_sistema').update(updateData).eq('id', msgId);
           }
         }
       }

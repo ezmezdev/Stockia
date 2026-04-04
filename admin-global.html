@@ -974,24 +974,16 @@
         document.getElementById('btnDesactivarMsgG').style.display = 'inline-flex';
         document.getElementById('msgGStats').style.display = 'block';
 
-        // Para saber qué empresa leyó, necesitamos los perfiles de los usuarios
-        // que están en leido_por y cruzarlos con sus empresas
-        const leidoPor = msg.leido_por || [];
+        // Leer empresas_que_vieron directamente — sin cruzar userId→empresa
+        const empresasVieron = msg.empresas_que_vieron || [];
+        const empresas = todasEmpresas || [];
 
-        if (!leidoPor.length) {
+        if (!empresasVieron.length) {
           document.getElementById('msgGStatsContenido').innerHTML =
             '<span class="texto-suave">Ninguna empresa lo leyó todavía.</span>';
         } else {
-          // Traer perfiles de usuarios que lo leyeron para saber a qué empresa pertenecen
-          const { data: perfiles } = await sb.from('profiles')
-            .select('empresa_id')
-            .in('id', leidoPor);
-
-          const empresasQueVieron = new Set((perfiles||[]).map(p => p.empresa_id));
-          const empresas = todasEmpresas || [];
-
-          const vieron   = empresas.filter(e => empresasQueVieron.has(e.id));
-          const noVieron = empresas.filter(e => !empresasQueVieron.has(e.id));
+          const vieron   = empresas.filter(e => empresasVieron.includes(e.id));
+          const noVieron = empresas.filter(e => !empresasVieron.includes(e.id));
 
           document.getElementById('msgGStatsContenido').innerHTML = `
             <div style="margin-bottom:10px">
@@ -1000,7 +992,7 @@
               </div>
               ${vieron.length
                 ? vieron.map(e => `<span class="badge badge-verde" style="margin:2px">${e.nombre}</span>`).join('')
-                : '<span class="texto-suave" style="font-size:12px">Ninguna</span>'}
+                : '<span class="texto-suave" style="font-size:12px">Ninguna todavía</span>'}
             </div>
             <div>
               <div style="font-size:12px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">
@@ -1008,7 +1000,7 @@
               </div>
               ${noVieron.length
                 ? noVieron.map(e => `<span class="badge badge-gris" style="margin:2px">${e.nombre}</span>`).join('')
-                : '<span class="texto-suave" style="font-size:12px">Todas leyeron el mensaje</span>'}
+                : '<span class="texto-suave" style="font-size:12px">✓ Todas lo leyeron</span>'}
             </div>
           `;
         }
