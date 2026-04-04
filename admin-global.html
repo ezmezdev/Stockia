@@ -477,7 +477,7 @@
 
       <!-- Estadísticas de lectura del global -->
       <div id="msgGStats" style="display:none;margin-top:16px;padding-top:14px;border-top:1px solid var(--borde)">
-        <div style="font-size:13px;font-weight:700;margin-bottom:8px">📊 Estadísticas de lectura</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px">🏢 Estado de lectura por empresa</div>
         <div id="msgGStatsContenido" class="texto-suave" style="font-size:13px">-</div>
       </div>
 
@@ -951,11 +951,16 @@
       document.getElementById('msgGFechaHasta').value = '';
       document.getElementById('msgGStats').style.display = 'none';
       document.getElementById('btnDesactivarMsgG').style.display = 'none';
+      document.getElementById('msgGStatsContenido').innerHTML =
+        '<div class="cargando"><div class="spinner"></div></div>';
 
-      // Cargar mensaje global activo si existe
-      const { data: msgs } = await sb.from('mensajes_sistema').select('*')
-        .eq('es_global', true).eq('activo', true)
-        .order('created_at', { ascending: false }).limit(1);
+      // Cargar mensaje global activo + todas las empresas activas en paralelo
+      const [{ data: msgs }, { data: todasEmpresas }] = await Promise.all([
+        sb.from('mensajes_sistema').select('*')
+          .eq('es_global', true).eq('activo', true)
+          .order('created_at', { ascending: false }).limit(1),
+        sb.from('empresas').select('id,nombre').eq('activa', true).order('nombre'),
+      ]);
 
       const msg = msgs?.[0];
       if (msg) {
@@ -967,12 +972,48 @@
           document.getElementById('msgGFechaHasta').value = msg.fecha_desactivacion || '';
         }
         document.getElementById('btnDesactivarMsgG').style.display = 'inline-flex';
-
-        // Estadísticas: cuántos usuarios lo leyeron en total
-        const leidoPor = msg.leido_por || [];
         document.getElementById('msgGStats').style.display = 'block';
-        document.getElementById('msgGStatsContenido').innerHTML =
-          `<span class="badge badge-verde">${leidoPor.length} usuario${leidoPor.length!==1?'s':''} lo leyeron</span>`;
+
+        // Para saber qué empresa leyó, necesitamos los perfiles de los usuarios
+        // que están en leido_por y cruzarlos con sus empresas
+        const leidoPor = msg.leido_por || [];
+
+        if (!leidoPor.length) {
+          document.getElementById('msgGStatsContenido').innerHTML =
+            '<span class="texto-suave">Ninguna empresa lo leyó todavía.</span>';
+        } else {
+          // Traer perfiles de usuarios que lo leyeron para saber a qué empresa pertenecen
+          const { data: perfiles } = await sb.from('profiles')
+            .select('empresa_id')
+            .in('id', leidoPor);
+
+          const empresasQueVieron = new Set((perfiles||[]).map(p => p.empresa_id));
+          const empresas = todasEmpresas || [];
+
+          const vieron   = empresas.filter(e => empresasQueVieron.has(e.id));
+          const noVieron = empresas.filter(e => !empresasQueVieron.has(e.id));
+
+          document.getElementById('msgGStatsContenido').innerHTML = `
+            <div style="margin-bottom:10px">
+              <div style="font-size:12px;font-weight:700;color:var(--verde);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">
+                ✓ Lo vieron (${vieron.length})
+              </div>
+              ${vieron.length
+                ? vieron.map(e => `<span class="badge badge-verde" style="margin:2px">${e.nombre}</span>`).join('')
+                : '<span class="texto-suave" style="font-size:12px">Ninguna</span>'}
+            </div>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">
+                ✗ Pendiente (${noVieron.length})
+              </div>
+              ${noVieron.length
+                ? noVieron.map(e => `<span class="badge badge-gris" style="margin:2px">${e.nombre}</span>`).join('')
+                : '<span class="texto-suave" style="font-size:12px">Todas leyeron el mensaje</span>'}
+            </div>
+          `;
+        }
+      } else {
+        document.getElementById('msgGStatsContenido').innerHTML = '';
       }
       abrirModal('modalMensajeGlobal');
     }
