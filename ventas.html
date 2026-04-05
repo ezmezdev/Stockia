@@ -672,6 +672,17 @@ function fechaParaInput(f) { if(!f)return hoyISO(); return new Date(f).toISOStri
   await Promise.all([cargarArticulosSelect(), tieneClientes ? cargarClientesSelect() : Promise.resolve()]);
   await cargarVentas();
   iniciarFiltros();
+
+  // Abrir panel arqueo automáticamente si viene desde el dashboard
+  if (window.location.hash === '#arqueo') {
+    setTimeout(() => {
+      const btnArqueo = document.getElementById('btnArqueo');
+      if (btnArqueo && btnArqueo.style.display !== 'none') {
+        togglePanel('arqueo');
+        btnArqueo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 400);
+  }
 })();
 
 // ════════════════════════════════════════════════════════════
