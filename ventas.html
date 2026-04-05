@@ -1787,7 +1787,6 @@ function actualizarConteo(){
     <div class="arqueo-box contado"><div class="arqueo-box-label">Contado físico</div><div class="arqueo-box-valor" style="color:var(--verde)">${formatoPeso(totalContado)}</div></div>
     <div class="arqueo-box ${esOk?'diferencia-ok':'diferencia-mal'}"><div class="arqueo-box-label">${esOk?'✓ Cuadra':'⚠ Diferencia'}</div><div class="arqueo-box-valor" style="color:${esOk?'var(--verde)':'var(--rojo)'}">${diferencia>=0?'+':''}${formatoPeso(diferencia)}</div><div style="font-size:11px;color:var(--texto-suave);margin-top:2px">${esOk?'Todo cuadra':'Revisá el conteo'}</div></div>`;
 }
-}
 
 async function guardarArqueo(){
   const totalSistema=parseFloat(document.getElementById('arqueoFisicoSection').dataset.totalSistema||0);
