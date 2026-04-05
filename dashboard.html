@@ -78,83 +78,8 @@
         <a href="ventas.html" class="btn btn-acento btn-lg" id="btnNuevaVenta">➕ Nueva Venta</a>
       </div>
 
-      <!-- Stats -->
-      <div class="stats-grid" id="statsGrid">
-        <div class="stat-card">
-          <div class="stat-icono azul" id="statArticulosIcono">📦</div>
-          <div class="stat-info">
-            <div class="stat-valor" id="totalArticulos">—</div>
-            <div class="stat-label" id="statArticulosLabel">Artículos registrados</div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icono verde">🔢</div>
-          <div class="stat-info">
-            <div class="stat-valor" id="stockTotal">—</div>
-            <div class="stat-label">Unidades en stock</div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icono naranja">💰</div>
-          <div class="stat-info">
-            <div class="stat-valor" id="ventasActivas">—</div>
-            <div class="stat-label">Ventas del mes</div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icono rojo">💳</div>
-          <div class="stat-info">
-            <div class="stat-valor" id="deudaTotal">—</div>
-            <div class="stat-label">Deuda total a cobrar</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Buscadores rápidos -->
-      <div class="buscadores-grid" id="buscadoresGrid">
-        <div class="card" id="cardBuscarArticulo">
-          <div class="card-titulo"><span class="icono" id="buscarArticuloIcono">📦</span> <span id="buscarArticuloLabel">Buscar artículo</span></div>
-          <div class="buscador-contenedor" style="margin-bottom:0">
-            <span class="buscador-icono">🔍</span>
-            <input type="text" class="buscador-input" id="buscarArticulo" placeholder="Nombre del artículo...">
-          </div>
-          <div id="resultadosArticulo" style="margin-top:12px"></div>
-        </div>
-        <div class="card" id="cardBuscarCliente" style="display:none">
-          <div class="card-titulo"><span class="icono">👥</span> Buscar cliente</div>
-          <div class="buscador-contenedor" style="margin-bottom:0">
-            <span class="buscador-icono">🔍</span>
-            <input type="text" class="buscador-input" id="buscarCliente" placeholder="Nombre o DNI...">
-          </div>
-          <div id="resultadosCliente" style="margin-top:12px"></div>
-        </div>
-      </div>
-
-      <!-- Últimas ventas -->
-      <div class="card" id="cardUltimasVentas" style="display:none">
-        <div class="card-titulo"><span class="icono">📋</span> Últimas ventas</div>
-        <div class="tabla-contenedor">
-          <table class="tabla" id="tablaUltimasVentas">
-            <thead>
-              <tr>
-                <th>Cód.</th>
-                <th>Fecha</th>
-                <th>Cliente</th>
-                <th>Artículo</th>
-                <th>Total</th>
-                <th>Deuda</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody id="cuerpoUltimasVentas">
-              <tr><td colspan="6"><div class="cargando"><div class="spinner"></div></div></td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div style="margin-top:16px;text-align:right">
-          <a href="ventas.html" class="btn btn-ghost btn-sm">Ver todas las ventas →</a>
-        </div>
-      </div>
+      <!-- Contenido dinámico según modo_ventas -->
+      <div id="dashContenido"><div class="cargando" style="padding:40px 0"><div class="spinner"></div></div></div>
 
     </main>
 
@@ -257,85 +182,349 @@
       // ── Mensaje del sistema ───────────────────────────────────
       if (empresaId) verificarMensajeSistema(sesion.perfil?.id);
 
-      // Adaptar textos de artículos
-      const nArt = empresa?.modulo_articulos_nombre || 'Artículos';
-      const iArt = empresa?.modulo_articulos_icono  || '📦';
-      document.getElementById('statArticulosIcono').textContent  = iArt;
-      document.getElementById('statArticulosLabel').textContent  = nArt + ' registrados';
-      document.getElementById('buscarArticuloIcono').textContent = iArt;
-      document.getElementById('buscarArticuloLabel').textContent = 'Buscar ' + nArt.toLowerCase();
-      document.getElementById('buscarArticulo').placeholder      = 'Nombre del ' + nArt.slice(0,-1).toLowerCase() + '...';
-
-      // Módulos
-      const mod = empresa?.modulos_habilitados || {};
-      if (mod.clientes) document.getElementById('cardBuscarCliente').style.display = '';
-      if (mod.ventas)   {
-        document.getElementById('cardUltimasVentas').style.display = '';
-        document.getElementById('btnNuevaVenta').style.display     = '';
-        cargarUltimasVentas();
-      } else {
-        document.getElementById('btnNuevaVenta').style.display = 'none';
-      }
-
-      cargarStats();
-      iniciarBuscadores();
+      // ── Renderizar dashboard según modo_ventas ────────────────
+      const modo = empresa?.config_funciones?.modo_ventas || 'individual';
+      if (modo === 'carrito')       await renderDashCarrito();
+      else if (modo === 'ambos')    await renderDashAmbos();
+      else                          await renderDashIndividual();
     })();
 
-    // ── Stats ─────────────────────────────────────────────────
-    async function cargarStats() {
-      if (!empresaId) return;
-      const [arts, ventas] = await Promise.all([
-        sb.from('articulos').select('stock').eq('empresa_id', empresaId).eq('activo', true),
-        sb.from('ventas').select('total,saldo').eq('empresa_id', empresaId),
+    // ════════════════════════════════════════════════════════════
+    // HELPERS COMUNES
+    // ════════════════════════════════════════════════════════════
+    function hoyISO() { return new Date().toISOString().split('T')[0]; }
+
+    async function getDatosBase() {
+      const hoy = hoyISO();
+      const inicioMes = hoy.substring(0,7) + '-01';
+      const [arts, ventasMes, ventasHoy, deuda, arqueoHoy] = await Promise.all([
+        sb.from('articulos').select('id,nombre,stock,stock_minimo').eq('empresa_id',empresaId).eq('activo',true),
+        sb.from('ventas').select('total,saldo,forma_pago,fecha_venta').eq('empresa_id',empresaId).gte('fecha_venta',inicioMes),
+        sb.from('ventas').select('total,forma_pago,fecha_venta').eq('empresa_id',empresaId).eq('fecha_venta',hoy),
+        sb.from('ventas').select('saldo').eq('empresa_id',empresaId).gt('saldo',0),
+        sb.from('arqueos').select('*').eq('empresa_id',empresaId).eq('fecha',hoy).order('created_at',{ascending:false}).limit(1),
       ]);
-
-      const totalArts  = arts.data?.length || 0;
-      const stockSum   = arts.data?.reduce((s,a) => s + (a.stock||0), 0) || 0;
-
-      // Ventas del mes
-      const hoy = new Date();
-      const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString();
-      const ventasMes = ventas.data?.filter(v => v.created_at >= inicioMes) || [];
-      const totalVentasMes = ventasMes.reduce((s,v) => s + (v.total||0), 0);
-      const deudaTotal = ventas.data?.reduce((s,v) => s + (v.saldo||0), 0) || 0;
-
-      document.getElementById('totalArticulos').textContent = totalArts;
-      document.getElementById('stockTotal').textContent     = stockSum.toLocaleString('es-AR');
-      document.getElementById('ventasActivas').textContent  = formatoPeso(totalVentasMes);
-      document.getElementById('deudaTotal').textContent     = formatoPeso(deudaTotal);
+      return {
+        articulos:  arts.data||[],
+        ventasMes:  ventasMes.data||[],
+        ventasHoy:  ventasHoy.data||[],
+        deudaTotal: (deuda.data||[]).reduce((s,v)=>s+Number(v.saldo||0),0),
+        arqueoHoy:  arqueoHoy.data?.[0]||null,
+        hoy,
+      };
     }
 
-    // ── Últimas ventas ────────────────────────────────────────
-    async function cargarUltimasVentas() {
-      const { data: ventas } = await sb
-        .from('ventas')
-        .select('*, clientes(nombre)')
-        .eq('empresa_id', empresaId)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      const tbody = document.getElementById('cuerpoUltimasVentas');
-      if (!ventas?.length) {
-        tbody.innerHTML = `<tr><td colspan="7"><div class="estado-vacio"><div class="estado-vacio-icono">💰</div><div class="estado-vacio-titulo">Sin ventas aún</div></div></td></tr>`;
-        return;
-      }
-      tbody.innerHTML = ventas.map(v => `
+    function tablaUltimasVentasHTML(ventas, maxRows=8) {
+      if (!ventas?.length) return `<tr><td colspan="6"><div class="estado-vacio"><div class="estado-vacio-icono">💰</div><div class="estado-vacio-titulo">Sin ventas aún</div></div></td></tr>`;
+      return ventas.slice(0,maxRows).map(v => `
         <tr>
           <td><span style="font-family:monospace;font-size:11px;background:var(--bg);border:1px solid var(--borde);padding:2px 6px;border-radius:5px;color:var(--texto-suave)">${v.codigo_venta||'—'}</span></td>
-          <td>${formatoFecha(v.created_at)}</td>
-          <td>${v.clientes?.nombre || 'Cons. final'}</td>
-          <td class="fw-600">${v.articulo_nombre || '-'}</td>
+          <td style="white-space:nowrap">${formatoFecha((v.fecha_venta||v.created_at)+'T12:00:00')}</td>
+          <td class="fw-600">${v.articulo_nombre||'-'}</td>
           <td>${formatoPeso(v.total)}</td>
-          <td class="${v.saldo > 0 ? 'texto-rojo' : 'texto-verde'}">${formatoPeso(v.saldo)}</td>
+          <td class="${Number(v.saldo)>0?'texto-rojo':'texto-suave'}">${formatoPeso(v.saldo)}</td>
           <td><span class="badge ${v.estado==='pagado'?'badge-verde':v.estado==='parcial'?'badge-naranja':'badge-rojo'}">${v.estado}</span></td>
-        </tr>
-      `).join('');
+        </tr>`).join('');
     }
 
-    // ── Buscadores ────────────────────────────────────────────
+    function stockBajoHTML(articulos) {
+      const bajos = articulos.filter(a => (a.stock_minimo||0) > 0 && a.stock <= a.stock_minimo);
+      if (!bajos.length) return `<p class="texto-suave" style="font-size:13px;padding:8px 0">✓ Todo el stock está bien.</p>`;
+      return bajos.map(a => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--borde);font-size:13px">
+          <span class="fw-600">${a.nombre}</span>
+          <span class="badge badge-rojo">Stock: ${a.stock} / Mín: ${a.stock_minimo}</span>
+        </div>`).join('');
+    }
+
+    function arqueoEstadoHTML(arqueo, ventasHoy) {
+      if (!arqueo) {
+        return `<div style="display:flex;align-items:center;gap:10px;padding:12px;background:#fffbeb;border:1px solid #fde68a;border-radius:var(--r-md)">
+          <span style="font-size:22px">⏳</span>
+          <div><div style="font-weight:700;font-size:13px;color:#92400e">Sin cerrar hoy</div>
+          <div style="font-size:11px;color:#92400e">El arqueo de caja del día no fue registrado todavía.</div></div>
+          <a href="ventas.html" class="btn btn-sm" style="margin-left:auto;background:#f59e0b;color:#fff;border:none">Ir al arqueo</a>
+        </div>`;
+      }
+      const dif = Number(arqueo.diferencia||0);
+      const ok  = Math.abs(dif) < 1;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:12px;background:${ok?'#ecfdf5':'#fef2f2'};border:1px solid ${ok?'#a7f3d0':'#fecaca'};border-radius:var(--r-md)">
+        <span style="font-size:22px">${ok?'✅':'⚠️'}</span>
+        <div>
+          <div style="font-weight:700;font-size:13px;color:${ok?'#065f46':'#991b1b'}">${ok?'Arqueo cerrado — cuadra':'Arqueo cerrado — diferencia'}</div>
+          <div style="font-size:11px;color:var(--texto-suave)">Efectivo sistema: ${formatoPeso(arqueo.total_efectivo_sistema)} · Contado: ${formatoPeso(arqueo.efectivo_contado)} · Fondo: ${formatoPeso(arqueo.fondo_caja||0)}</div>
+        </div>
+        ${!ok?`<span style="margin-left:auto;font-weight:800;font-size:15px;color:#dc2626">${dif>0?'+':''}${formatoPeso(dif)}</span>`:''}
+      </div>`;
+    }
+
+    function pagoDesglose(ventas) {
+      const ef  = ventas.filter(v=>v.forma_pago==='efectivo').reduce((s,v)=>s+Number(v.total||0),0);
+      const tr  = ventas.filter(v=>v.forma_pago==='transferencia').reduce((s,v)=>s+Number(v.total||0),0);
+      const ta  = ventas.filter(v=>v.forma_pago==='tarjeta').reduce((s,v)=>s+Number(v.total||0),0);
+      return {ef,tr,ta};
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // LAYOUT 1 — INDIVIDUAL (mayorista/electrodomésticos)
+    // ════════════════════════════════════════════════════════════
+    async function renderDashIndividual() {
+      const d = await getDatosBase();
+      const nArt = empresa?.modulo_articulos_nombre || 'Artículos';
+      const iArt = empresa?.modulo_articulos_icono  || '📦';
+      const stockTotal = d.articulos.reduce((s,a)=>s+(a.stock||0),0);
+      const totalMes   = d.ventasMes.reduce((s,v)=>s+Number(v.total||0),0);
+      const mod = empresa?.modulos_habilitados||{};
+
+      // Cargar últimas ventas
+      const {data:ultimas} = await sb.from('ventas').select('*,clientes(nombre)')
+        .eq('empresa_id',empresaId).order('fecha_venta',{ascending:false}).order('created_at',{ascending:false}).limit(8);
+
+      document.getElementById('dashContenido').innerHTML = `
+        <div class="stats-grid" style="margin-bottom:16px">
+          <div class="stat-card">
+            <div class="stat-icono azul">${iArt}</div>
+            <div class="stat-info"><div class="stat-valor">${d.articulos.length}</div><div class="stat-label">${nArt} registrados</div></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icono verde">🔢</div>
+            <div class="stat-info"><div class="stat-valor">${stockTotal.toLocaleString('es-AR')}</div><div class="stat-label">Unidades en stock</div></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icono naranja">💰</div>
+            <div class="stat-info"><div class="stat-valor">${formatoPeso(totalMes)}</div><div class="stat-label">Ventas del mes</div></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icono rojo">💳</div>
+            <div class="stat-info"><div class="stat-valor">${formatoPeso(d.deudaTotal)}</div><div class="stat-label">Deuda total a cobrar</div></div>
+          </div>
+        </div>
+
+        <div class="buscadores-grid" style="margin-bottom:16px">
+          <div class="card">
+            <div class="card-titulo"><span class="icono">${iArt}</span> Buscar ${nArt.toLowerCase()}</div>
+            <div class="buscador-contenedor" style="margin-bottom:0">
+              <span class="buscador-icono">🔍</span>
+              <input type="text" class="buscador-input" id="buscarArticulo" placeholder="Nombre del ${(nArt.slice(0,-1)||'artículo').toLowerCase()}...">
+            </div>
+            <div id="resultadosArticulo" style="margin-top:12px"></div>
+          </div>
+          ${mod.clientes?`
+          <div class="card">
+            <div class="card-titulo"><span class="icono">👥</span> Buscar cliente</div>
+            <div class="buscador-contenedor" style="margin-bottom:0">
+              <span class="buscador-icono">🔍</span>
+              <input type="text" class="buscador-input" id="buscarCliente" placeholder="Nombre o DNI...">
+            </div>
+            <div id="resultadosCliente" style="margin-top:12px"></div>
+          </div>`:''}
+        </div>
+
+        ${mod.ventas?`
+        <div class="card">
+          <div class="card-titulo"><span class="icono">📋</span> Últimas ventas</div>
+          <div class="tabla-contenedor">
+            <table class="tabla">
+              <thead><tr><th>Cód.</th><th>Fecha</th><th>Artículo</th><th>Total</th><th>Deuda</th><th>Estado</th></tr></thead>
+              <tbody>${tablaUltimasVentasHTML(ultimas)}</tbody>
+            </table>
+          </div>
+          <div style="margin-top:16px;text-align:right"><a href="ventas.html" class="btn btn-ghost btn-sm">Ver todas las ventas →</a></div>
+        </div>`:''}
+      `;
+      iniciarBuscadores();
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // LAYOUT 2 — CARRITO (kiosco/almacén/ferretería)
+    // ════════════════════════════════════════════════════════════
+    async function renderDashCarrito() {
+      const d = await getDatosBase();
+      const {ef,tr,ta} = pagoDesglose(d.ventasHoy);
+      const totalHoy    = d.ventasHoy.reduce((s,v)=>s+Number(v.total||0),0);
+      const cantHoy     = d.ventasHoy.length;
+      const cf          = empresa?.config_funciones||{};
+      const tieneArqueo = cf.arqueo_caja;
+
+      const {data:ultimas} = await sb.from('ventas').select('*')
+        .eq('empresa_id',empresaId).eq('fecha_venta',d.hoy)
+        .order('created_at',{ascending:false}).limit(8);
+
+      document.getElementById('dashContenido').innerHTML = `
+        <!-- Stats del día -->
+        <div class="stats-grid" style="margin-bottom:16px">
+          <div class="stat-card">
+            <div class="stat-icono azul">🛒</div>
+            <div class="stat-info"><div class="stat-valor">${cantHoy}</div><div class="stat-label">Ventas hoy</div></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icono verde">💵</div>
+            <div class="stat-info"><div class="stat-valor">${formatoPeso(totalHoy)}</div><div class="stat-label">Recaudado hoy</div></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icono naranja">📦</div>
+            <div class="stat-info"><div class="stat-valor">${d.articulos.filter(a=>(a.stock_minimo||0)>0&&a.stock<=a.stock_minimo).length}</div><div class="stat-label">Productos bajo stock</div></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icono rojo">🔢</div>
+            <div class="stat-info"><div class="stat-valor">${d.articulos.reduce((s,a)=>s+(a.stock||0),0).toLocaleString('es-AR')}</div><div class="stat-label">Unidades en stock</div></div>
+          </div>
+        </div>
+
+        <!-- Desglose por forma de pago -->
+        <div class="card mb-16" style="margin-bottom:16px">
+          <div class="card-titulo"><span class="icono">💳</span> Desglose del día por forma de pago</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px">
+            <div style="padding:12px;background:var(--bg);border-radius:var(--r-md);border-left:4px solid var(--verde);text-align:center">
+              <div style="font-size:11px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">💵 Efectivo</div>
+              <div style="font-size:20px;font-weight:800">${formatoPeso(ef)}</div>
+            </div>
+            <div style="padding:12px;background:var(--bg);border-radius:var(--r-md);border-left:4px solid var(--azul-accion);text-align:center">
+              <div style="font-size:11px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">🏦 Transferencia</div>
+              <div style="font-size:20px;font-weight:800">${formatoPeso(tr)}</div>
+            </div>
+            <div style="padding:12px;background:var(--bg);border-radius:var(--r-md);border-left:4px solid var(--naranja);text-align:center">
+              <div style="font-size:11px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">💳 Tarjeta</div>
+              <div style="font-size:20px;font-weight:800">${formatoPeso(ta)}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Arqueo del día -->
+        ${tieneArqueo?`
+        <div class="card mb-16" style="margin-bottom:16px">
+          <div class="card-titulo"><span class="icono">🏦</span> Arqueo de caja — hoy</div>
+          <div style="margin-top:10px">${arqueoEstadoHTML(d.arqueoHoy, d.ventasHoy)}</div>
+        </div>`:''}
+
+        <!-- Stock bajo -->
+        <div class="card mb-16" style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div class="card-titulo" style="margin:0"><span class="icono">⚠️</span> Productos con stock bajo</div>
+            <a href="articulos.html" class="btn btn-ghost btn-sm">Ver artículos →</a>
+          </div>
+          ${stockBajoHTML(d.articulos)}
+        </div>
+
+        <!-- Últimas ventas del día -->
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div class="card-titulo" style="margin:0"><span class="icono">📋</span> Ventas de hoy</div>
+            <a href="ventas.html" class="btn btn-ghost btn-sm">Ver todas →</a>
+          </div>
+          <div class="tabla-contenedor">
+            <table class="tabla">
+              <thead><tr><th>Cód.</th><th>Hora</th><th>Artículo / Ítems</th><th>Total</th><th>Pago</th><th>Estado</th></tr></thead>
+              <tbody>
+                ${!ultimas?.length
+                  ? `<tr><td colspan="6"><div class="estado-vacio"><div class="estado-vacio-icono">🛒</div><div class="estado-vacio-titulo">Sin ventas hoy todavía</div></div></td></tr>`
+                  : ultimas.map(v=>`<tr>
+                      <td><span style="font-family:monospace;font-size:11px;background:var(--bg);border:1px solid var(--borde);padding:2px 6px;border-radius:5px;color:var(--texto-suave)">${v.codigo_venta||'—'}</span></td>
+                      <td style="white-space:nowrap;color:var(--texto-suave);font-size:12px">${new Date(v.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}</td>
+                      <td class="fw-600">${v.es_carrito?`<span class="badge badge-azul">🛒 ${v.articulo_nombre}</span>`:v.articulo_nombre||'-'}</td>
+                      <td><b>${formatoPeso(v.total)}</b></td>
+                      <td style="font-size:12px;color:var(--texto-suave)">${{efectivo:'💵',transferencia:'🏦',tarjeta:'💳'}[v.forma_pago]||v.forma_pago}</td>
+                      <td><span class="badge ${v.estado==='pagado'?'badge-verde':v.estado==='parcial'?'badge-naranja':'badge-rojo'}">${v.estado}</span></td>
+                    </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // LAYOUT 3 — AMBOS (negocios mixtos)
+    // ════════════════════════════════════════════════════════════
+    async function renderDashAmbos() {
+      const d = await getDatosBase();
+      const {ef,tr,ta} = pagoDesglose(d.ventasHoy);
+      const totalHoy  = d.ventasHoy.reduce((s,v)=>s+Number(v.total||0),0);
+      const totalMes  = d.ventasMes.reduce((s,v)=>s+Number(v.total||0),0);
+      const cantHoy   = d.ventasHoy.length;
+      const cf        = empresa?.config_funciones||{};
+      const bajosCount= d.articulos.filter(a=>(a.stock_minimo||0)>0&&a.stock<=a.stock_minimo).length;
+
+      const {data:ultimas} = await sb.from('ventas').select('*,clientes(nombre)')
+        .eq('empresa_id',empresaId).order('fecha_venta',{ascending:false}).order('created_at',{ascending:false}).limit(8);
+
+      document.getElementById('dashContenido').innerHTML = `
+        <div class="stats-grid" style="margin-bottom:16px">
+          <div class="stat-card">
+            <div class="stat-icono azul">🛒</div>
+            <div class="stat-info"><div class="stat-valor">${cantHoy}</div><div class="stat-label">Ventas hoy</div></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icono verde">💵</div>
+            <div class="stat-info"><div class="stat-valor">${formatoPeso(totalHoy)}</div><div class="stat-label">Recaudado hoy</div></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icono naranja">💰</div>
+            <div class="stat-info"><div class="stat-valor">${formatoPeso(totalMes)}</div><div class="stat-label">Ventas del mes</div></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icono rojo">💳</div>
+            <div class="stat-info"><div class="stat-valor">${formatoPeso(d.deudaTotal)}</div><div class="stat-label">Deuda total</div></div>
+          </div>
+        </div>
+
+        <!-- Desglose del día -->
+        <div class="card mb-16" style="margin-bottom:16px">
+          <div class="card-titulo"><span class="icono">💳</span> Desglose del día</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px">
+            <div style="padding:12px;background:var(--bg);border-radius:var(--r-md);border-left:4px solid var(--verde);text-align:center">
+              <div style="font-size:11px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;margin-bottom:4px">💵 Efectivo</div>
+              <div style="font-size:18px;font-weight:800">${formatoPeso(ef)}</div>
+            </div>
+            <div style="padding:12px;background:var(--bg);border-radius:var(--r-md);border-left:4px solid var(--azul-accion);text-align:center">
+              <div style="font-size:11px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;margin-bottom:4px">🏦 Transferencia</div>
+              <div style="font-size:18px;font-weight:800">${formatoPeso(tr)}</div>
+            </div>
+            <div style="padding:12px;background:var(--bg);border-radius:var(--r-md);border-left:4px solid var(--naranja);text-align:center">
+              <div style="font-size:11px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;margin-bottom:4px">💳 Tarjeta</div>
+              <div style="font-size:18px;font-weight:800">${formatoPeso(ta)}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stock bajo + arqueo -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+          <div class="card">
+            <div class="card-titulo"><span class="icono">⚠️</span> Stock bajo <span class="badge badge-rojo" style="margin-left:4px">${bajosCount}</span></div>
+            <div style="margin-top:8px">${stockBajoHTML(d.articulos)}</div>
+          </div>
+          ${cf.arqueo_caja?`
+          <div class="card">
+            <div class="card-titulo"><span class="icono">🏦</span> Arqueo de hoy</div>
+            <div style="margin-top:8px">${arqueoEstadoHTML(d.arqueoHoy, d.ventasHoy)}</div>
+          </div>`:`
+          <div class="card">
+            <div class="card-titulo"><span class="icono">🔢</span> Stock total</div>
+            <div style="font-size:28px;font-weight:800;margin-top:8px">${d.articulos.reduce((s,a)=>s+(a.stock||0),0).toLocaleString('es-AR')}</div>
+            <div class="texto-suave" style="font-size:12px">unidades en stock</div>
+          </div>`}
+        </div>
+
+        <!-- Últimas ventas -->
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div class="card-titulo" style="margin:0"><span class="icono">📋</span> Últimas ventas</div>
+            <a href="ventas.html" class="btn btn-ghost btn-sm">Ver todas →</a>
+          </div>
+          <div class="tabla-contenedor">
+            <table class="tabla">
+              <thead><tr><th>Cód.</th><th>Fecha</th><th>Artículo</th><th>Total</th><th>Deuda</th><th>Estado</th></tr></thead>
+              <tbody>${tablaUltimasVentasHTML(ultimas)}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    // ── Buscadores (solo layout individual) ──────────────────
     function iniciarBuscadores() {
       let tA, tC;
-      document.getElementById('buscarArticulo').addEventListener('input', (e) => {
+      document.getElementById('buscarArticulo')?.addEventListener('input', (e) => {
         clearTimeout(tA);
         tA = setTimeout(() => buscarArticulos(e.target.value), 300);
       });
@@ -347,6 +536,7 @@
 
     async function buscarArticulos(q) {
       const res = document.getElementById('resultadosArticulo');
+      if (!res) return;
       if (!q || q.length < 2) { res.innerHTML = ''; return; }
       const { data } = await sb.from('articulos').select('nombre,stock,precio')
         .eq('empresa_id', empresaId).ilike('nombre', `%${q}%`).limit(5);
@@ -355,22 +545,20 @@
         <div style="padding:8px 0;border-bottom:1px solid var(--borde);display:flex;justify-content:space-between;font-size:13px">
           <span>${a.nombre}</span>
           <span class="texto-suave">Stock: ${a.stock} · ${formatoPeso(a.precio)}</span>
-        </div>
-      `).join('');
+        </div>`).join('');
     }
 
     async function buscarClientes(q) {
       const res = document.getElementById('resultadosCliente');
+      if (!res) return;
       if (!q || q.length < 2) { res.innerHTML = ''; return; }
       const { data } = await sb.from('clientes').select('nombre,telefono,dni')
-        .eq('empresa_id', empresaId)
-        .or(`nombre.ilike.%${q}%,dni.ilike.%${q}%`).limit(5);
+        .eq('empresa_id', empresaId).or(`nombre.ilike.%${q}%,dni.ilike.%${q}%`).limit(5);
       if (!data?.length) { res.innerHTML = '<p class="texto-suave" style="font-size:13px">Sin resultados</p>'; return; }
       res.innerHTML = data.map(c => `
         <div style="padding:8px 0;border-bottom:1px solid var(--borde);font-size:13px">
           <b>${c.nombre}</b> <span class="texto-suave">${c.telefono||''} ${c.dni?'· DNI: '+c.dni:''}</span>
-        </div>
-      `).join('');
+        </div>`).join('');
     }
 
     // ── Mensaje del sistema ───────────────────────────────────

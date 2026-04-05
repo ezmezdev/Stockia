@@ -238,6 +238,13 @@
       </div>
       <div id="arqueoSistema"><div class="cargando"><div class="spinner"></div></div></div>
       <div id="arqueoFisicoSection" style="display:none">
+        <div class="form-grupo" style="margin-top:16px;max-width:280px">
+          <label class="form-label">💵 Fondo inicial del día ($)</label>
+          <input type="number" class="form-input" id="arqueoFondo" value="0" min="0" step="0.01"
+            placeholder="Ej: 5000" oninput="actualizarConteo()"
+            style="font-size:16px;font-weight:700">
+          <small class="texto-suave" style="font-size:11px">El monto que tenías en la caja antes de abrir. Se descuenta para mostrar el efectivo real del día.</small>
+        </div>
         <div class="seccion-titulo" style="margin-top:16px">💵 Conteo de efectivo físico</div>
         <div class="billetes-grid" id="billetesGrid"></div>
         <div class="arqueo-comparacion" id="arqueoComparacion"></div>
@@ -1758,16 +1765,22 @@ function actualizarConteo(){
   let totalContado=0;
   BILLETES.forEach(b=>{const cant=parseInt(document.getElementById('bill_'+b)?.value)||0;const sub=cant*b;totalContado+=sub;const el=document.getElementById('sub_'+b);if(el)el.textContent=`= ${formatoPeso(sub)}`;});
   const totalSistema=parseFloat(document.getElementById('arqueoFisicoSection').dataset.totalSistema||0);
+  const fondo=parseFloat(document.getElementById('arqueoFondo')?.value||0);
+  const efectivoEsperado=Math.max(0,totalSistema-fondo);
   const diferencia=totalContado-totalSistema;
   const esOk=Math.abs(diferencia)<1;
   document.getElementById('arqueoComparacion').innerHTML=`
-    <div class="arqueo-box sistema"><div class="arqueo-box-label">Sistema dice</div><div class="arqueo-box-valor" style="color:var(--azul-accion)">${formatoPeso(totalSistema)}</div></div>
+    <div class="arqueo-box sistema"><div class="arqueo-box-label">Sistema (ventas ef.)</div><div class="arqueo-box-valor" style="color:var(--azul-accion)">${formatoPeso(totalSistema)}</div></div>
+    <div class="arqueo-box" style="border-color:#7c3aed;background:#f5f3ff"><div class="arqueo-box-label">(-) Fondo inicial</div><div class="arqueo-box-valor" style="color:#7c3aed">${formatoPeso(fondo)}</div></div>
+    <div class="arqueo-box sistema"><div class="arqueo-box-label">Efectivo esperado</div><div class="arqueo-box-valor" style="color:var(--azul-accion)">${formatoPeso(efectivoEsperado)}</div></div>
     <div class="arqueo-box contado"><div class="arqueo-box-label">Contado físico</div><div class="arqueo-box-valor" style="color:var(--verde)">${formatoPeso(totalContado)}</div></div>
-    <div class="arqueo-box ${esOk?'diferencia-ok':'diferencia-mal'}"><div class="arqueo-box-label">${esOk?'✓ Cierra':'⚠ Diferencia'}</div><div class="arqueo-box-valor" style="color:${esOk?'var(--verde)':'var(--rojo)'}">${diferencia>=0?'+':''}${formatoPeso(diferencia)}</div><div style="font-size:11px;color:var(--texto-suave);margin-top:2px">${esOk?'Todo cuadra':'Revisá el conteo'}</div></div>`;
+    <div class="arqueo-box ${esOk?'diferencia-ok':'diferencia-mal'}"><div class="arqueo-box-label">${esOk?'✓ Cuadra':'⚠ Diferencia'}</div><div class="arqueo-box-valor" style="color:${esOk?'var(--verde)':'var(--rojo)'}">${diferencia>=0?'+':''}${formatoPeso(diferencia)}</div><div style="font-size:11px;color:var(--texto-suave);margin-top:2px">${esOk?'Todo cuadra':'Revisá el conteo'}</div></div>`;
+}
 }
 
 async function guardarArqueo(){
   const totalSistema=parseFloat(document.getElementById('arqueoFisicoSection').dataset.totalSistema||0);
+  const fondo=parseFloat(document.getElementById('arqueoFondo')?.value||0);
   let totalContado=0;const detalleBilletes={};
   BILLETES.forEach(b=>{const cant=parseInt(document.getElementById('bill_'+b)?.value)||0;if(cant>0)detalleBilletes[b]=cant;totalContado+=cant*b;});
   const hoy=hoyISO();const turno=document.getElementById('arqueoTurno')?.value||'diario';const notas=document.getElementById('arqueoNotas')?.value.trim()||null;
@@ -1776,10 +1789,12 @@ async function guardarArqueo(){
   const v=ventas||[],c=cobros||[];
   const tots={efectivo:v.filter(x=>x.forma_pago==='efectivo').reduce((s,x)=>s+Number(x.total),0),transferencia:v.filter(x=>x.forma_pago==='transferencia').reduce((s,x)=>s+Number(x.total),0),tarjeta:v.filter(x=>x.forma_pago==='tarjeta').reduce((s,x)=>s+Number(x.total),0),cta:v.filter(x=>x.forma_pago==='cuenta_corriente').reduce((s,x)=>s+Number(x.total),0)};
   const totalCobros=c.reduce((s,p)=>s+Number(p.monto),0);
-  const{error}=await sb.from('arqueos').insert({empresa_id:empresaId,turno,fecha:hoy,periodo_desde:`${hoy}T00:00:00`,periodo_hasta:`${hoy}T23:59:59`,total_efectivo_sistema:totalSistema,total_transferencia:tots.transferencia,total_tarjeta:tots.tarjeta,total_cuenta_corriente:tots.cta,total_ventas_sistema:v.reduce((s,x)=>s+Number(x.total),0),total_cobros_sistema:totalCobros,efectivo_contado:totalContado,diferencia:totalContado-totalSistema,detalle_billetes:detalleBilletes,notas});
+  const diferencia=totalContado-totalSistema;
+  const{error}=await sb.from('arqueos').insert({empresa_id:empresaId,turno,fecha:hoy,periodo_desde:`${hoy}T00:00:00`,periodo_hasta:`${hoy}T23:59:59`,total_efectivo_sistema:totalSistema,total_transferencia:tots.transferencia,total_tarjeta:tots.tarjeta,total_cuenta_corriente:tots.cta,total_ventas_sistema:v.reduce((s,x)=>s+Number(x.total),0),total_cobros_sistema:totalCobros,efectivo_contado:totalContado,diferencia,fondo_caja:fondo,detalle_billetes:detalleBilletes,notas});
   if(error){mostrarAlerta('Error: '+error.message,'error');return;}
   mostrarAlerta('Arqueo guardado ✓','exito');
   BILLETES.forEach(b=>{const el=document.getElementById('bill_'+b);if(el)el.value='0';});
+  if(document.getElementById('arqueoFondo')) document.getElementById('arqueoFondo').value='0';
   if(document.getElementById('arqueoNotas'))document.getElementById('arqueoNotas').value='';
   actualizarConteo();
   await cargarHistorialArqueos();
