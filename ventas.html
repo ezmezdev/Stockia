@@ -1544,7 +1544,7 @@ async function calcularResumen(){
   `;
 }
 
-function exportarResumenPDF(){
+async function exportarResumenPDF(){
   if(!_datosResumen){mostrarAlerta('Generá el resumen primero','info');return;}
   try {
   const{jsPDF}=window.jspdf;
@@ -1611,26 +1611,84 @@ function exportarResumenPDF(){
   if(_datosResumen.ventas.length && y<220){
     doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.setFontSize(10);
     doc.text('DETALLE DE VENTAS',14,y);y+=6;
+
+    // Cabecera tabla
     doc.setFillColor(30,58,138);doc.rect(14,y-4,W-28,7,'F');
     doc.setTextColor(255,255,255);doc.setFontSize(8);
-    const cols=['Cod.','Fecha','Cliente','Articulo','Pago','Total','Saldo'];
-    const xs=[18,35,60,100,135,160,182];
+    const cols=['Cod.','Fecha','Cliente','Articulo / Items','Pago','Total','Saldo'];
+    const xs=[18,35,60,100,140,162,182];
     cols.forEach((h,i)=>doc.text(h,xs[i],y));y+=7;
-    _datosResumen.ventas.forEach((vt,i)=>{
-      if(y>270){doc.addPage();y=20;}
-      doc.setFillColor(i%2?248:255,i%2?250:255,i%2?255:255);doc.rect(14,y-4,W-28,7,'F');
+
+    // Cargar ítems de ventas carrito en paralelo antes de dibujar
+    const ventasCarrito=_datosResumen.ventas.filter(vt=>vt.es_carrito);
+    const itemsPorVenta={};
+    if(ventasCarrito.length){
+      const ids=ventasCarrito.map(vt=>vt.id);
+      const{data:todosItems}=await sb.from('venta_items')
+        .select('venta_id,articulo_nombre,cantidad,precio_unitario,subtotal,devuelto')
+        .in('venta_id',ids)
+        .eq('devuelto',false)
+        .order('created_at');
+      (todosItems||[]).forEach(it=>{
+        if(!itemsPorVenta[it.venta_id]) itemsPorVenta[it.venta_id]=[];
+        itemsPorVenta[it.venta_id].push(it);
+      });
+    }
+
+    let rowIdx=0;
+    for(const vt of _datosResumen.ventas){
+      if(y>265){doc.addPage();y=20;}
+
+      const bgColor=rowIdx%2?[248,250,255]:[255,255,255];
+      const items=itemsPorVenta[vt.id]||[];
+      const esCarrito=vt.es_carrito && items.length>0;
+
+      // Altura de la fila: 7 base + 5 por cada ítem si es carrito
+      const alturaFila = esCarrito ? 7+items.length*5 : 7;
+      doc.setFillColor(...bgColor);doc.rect(14,y-4,W-28,alturaFila,'F');
+
       doc.setTextColor(30,30,30);doc.setFont('helvetica','normal');doc.setFontSize(7);
+
+      const artText = esCarrito
+        ? sanitizePDF(vt.articulo_nombre||'-')
+        : sanitizePDF((vt.articulo_nombre||'-').substring(0,22));
+
       const row=[
         sanitizePDF(vt.codigo_venta||'-').substring(0,8),
         (vt.fecha_venta||vt.created_at||'').substring(0,10),
-        sanitizePDF((vt.clientes?.nombre||'Cons.final').substring(0,18)),
-        sanitizePDF((vt.articulo_nombre||'-').substring(0,20)),
-        sanitizePDF(vt.forma_pago||'').substring(0,10),
+        sanitizePDF((vt.clientes?.nombre||'Cons.final').substring(0,16)),
+        artText.substring(0,22),
+        sanitizePDF(vt.forma_pago||'').substring(0,9),
         formatoPeso(vt.total),
         formatoPeso(vt.saldo),
       ];
-      row.forEach((v,j)=>doc.text(String(v),xs[j],y));y+=7;
-    });
+      row.forEach((v,j)=>doc.text(String(v),xs[j],y));
+
+      // Ítems del carrito — opción A: sangría bajo el artículo
+      if(esCarrito){
+        doc.setFontSize(6.5);doc.setTextColor(80,80,80);
+        items.forEach((it,ii)=>{
+          const itemY=y+5+(ii*5);
+          if(itemY<285){
+            const itemLabel=sanitizePDF(it.articulo_nombre||'').substring(0,28);
+            doc.text('  '+itemLabel, xs[3], itemY);
+            doc.text('x'+it.cantidad, 140, itemY);
+            doc.text(formatoPeso(it.subtotal), xs[5], itemY);
+          }
+        });
+        doc.setFontSize(7);doc.setTextColor(30,30,30);
+      }
+
+      y+=alturaFila;
+      rowIdx++;
+
+      // Separador sutil entre ventas carrito
+      if(esCarrito){
+        doc.setDrawColor(220,220,230);
+        doc.line(14,y-1,W-14,y-1);
+        doc.setDrawColor(0,0,0);
+      }
+    }
   }
 
   // ── Pie de página ──────────────────────────────────────────
