@@ -155,7 +155,16 @@ function mostrarAlerta(msg, tipo = 'info', dur = 4000) {
 // ============================================================
 // FORMATO
 // ============================================================
-function formatoPeso(n) { return new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'}).format(n||0); }
+function formatoPeso(n) {
+  const num = Number(n) || 0;
+  const tieneCentavos = num % 1 !== 0;
+  return new Intl.NumberFormat('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    minimumFractionDigits: tieneCentavos ? 2 : 0,
+    maximumFractionDigits: tieneCentavos ? 2 : 0,
+  }).format(num);
+}
 function formatoFecha(f)     { if(!f)return'-'; return new Date(f).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}); }
 function formatoFechaHora(f) { if(!f)return'-'; return new Date(f).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
 
