@@ -376,25 +376,62 @@
     </div>
     <div class="form-grupo">
       <label class="form-label">Forma de pago</label>
-      <select class="form-select" id="ventaFormaPago" onchange="toggleCuotas()">
+      <select class="form-select" id="ventaFormaPago" onchange="toggleCuotasIndividual()">
         <option value="efectivo">💵 Efectivo</option>
         <option value="transferencia">🏦 Transferencia</option>
         <option value="tarjeta">💳 Tarjeta</option>
         <option value="cuenta_corriente">📋 Cuenta corriente</option>
+        <option value="cuotas">📅 Cuotas mensuales</option>
       </select>
     </div>
+
+    <!-- Panel cuotas venta individual — igual al del carrito -->
+    <div id="seccionCuotasIndividual" style="display:none">
+      <div class="item-cuotas-panel" style="margin-bottom:12px">
+        <div class="item-cuotas-grid">
+          <div class="item-cuotas-campo">
+            <label>N° de cuotas</label>
+            <input type="number" class="form-input" id="ventaCuotas" value="1" min="1" max="60" oninput="calcularTotal()">
+          </div>
+          <div class="item-cuotas-campo">
+            <label>Recargo (%)</label>
+            <input type="number" class="form-input" id="ventaRecargo" value="0" min="0" step="0.5" oninput="calcularTotal()">
+          </div>
+          <div class="item-cuotas-campo">
+            <label>Día de vencimiento</label>
+            <input type="number" class="form-input" id="ventaDiaVenc" value="10" min="1" max="31" placeholder="Ej: 15" oninput="calcularTotal()">
+          </div>
+          <div class="item-cuotas-campo">
+            <label>% Mora</label>
+            <input type="number" class="form-input" id="ventaMoraPct" value="0" min="0" step="0.5" oninput="calcularTotal()">
+          </div>
+          <div class="item-cuotas-campo" style="grid-column:1/-1">
+            <label>% Gastos administrativos (por mora)</label>
+            <input type="number" class="form-input" id="ventaGastosAdminPct" value="0" min="0" step="0.5" oninput="calcularTotal()">
+          </div>
+        </div>
+        <!-- Resumen cuotas individual -->
+        <div class="item-cuotas-resumen" id="rResumenCuotasIndividual">
+          <div><span class="r-label">Precio contado:</span><span class="r-valor">$0</span></div>
+          <div><span class="r-label">💡 1 cuota de:</span><span class="r-valor" style="color:var(--azul-accion)">$0</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sección cuotas cuenta corriente (legado) -->
     <div id="seccionCuotas" style="display:none">
       <div class="form-fila">
         <div class="form-grupo">
           <label class="form-label">Cuotas</label>
-          <input type="number" class="form-input" id="ventaCuotas" value="1" min="1" oninput="calcularTotal()">
+          <input type="number" class="form-input" id="ventaCuotasCta" value="1" min="1" oninput="calcularTotal()">
         </div>
         <div class="form-grupo">
           <label class="form-label">Recargo (%)</label>
-          <input type="number" class="form-input" id="ventaRecargo" value="0" min="0" step="0.01" oninput="calcularTotal()">
+          <input type="number" class="form-input" id="ventaRecargoCta" value="0" min="0" step="0.01" oninput="calcularTotal()">
         </div>
       </div>
     </div>
+
     <div class="form-grupo">
       <label class="form-label">Pago inicial ($) <small class="texto-suave">(0 = en deuda)</small></label>
       <input type="number" class="form-input" id="ventaPagado" value="0" min="0" step="0.01" oninput="calcularTotal()">
@@ -728,9 +765,13 @@ async function abrirVentaIndividual() {
   document.getElementById('ventaFormaPago').value='efectivo';
   document.getElementById('ventaCuotas').value='1';
   document.getElementById('ventaRecargo').value='0';
+  document.getElementById('ventaDiaVenc').value='10';
+  document.getElementById('ventaMoraPct').value='0';
+  document.getElementById('ventaGastosAdminPct').value='0';
   document.getElementById('ventaPagado').value='0';
   document.getElementById('ventaNotas').value='';
   document.getElementById('ventaCodigo').value='';
+  document.getElementById('seccionCuotasIndividual').style.display='none';
   document.getElementById('seccionCuotas').style.display='none';
   document.getElementById('modalVentaTitulo').textContent='➕ Nueva Venta';
   limpiarErrorCodigoVenta();
@@ -748,22 +789,51 @@ function actualizarPrecio() {
   if (precio) document.getElementById('ventaPrecio').value = precio;
   calcularTotal();
 }
-function toggleCuotas() {
-  document.getElementById('seccionCuotas').style.display =
-    document.getElementById('ventaFormaPago').value === 'cuenta_corriente' ? 'block' : 'none';
+function toggleCuotasIndividual() {
+  const fp = document.getElementById('ventaFormaPago').value;
+  document.getElementById('seccionCuotasIndividual').style.display = fp === 'cuotas'          ? 'block' : 'none';
+  document.getElementById('seccionCuotas').style.display           = fp === 'cuenta_corriente' ? 'block' : 'none';
   calcularTotal();
 }
+function toggleCuotas() { toggleCuotasIndividual(); }
+
 function calcularTotal() {
   const cant   = parseFloat(document.getElementById('ventaCantidad').value)||1;
   const precio = parseFloat(document.getElementById('ventaPrecio').value)||0;
-  const recargo= parseFloat(document.getElementById('ventaRecargo').value)||0;
   const pagado = parseFloat(document.getElementById('ventaPagado').value)||0;
-  const sub=cant*precio, monRec=sub*(recargo/100), total=sub+monRec, saldo=Math.max(0,total-pagado);
-  document.getElementById('rSubtotal').textContent=formatoPeso(sub);
-  document.getElementById('rRecargo').textContent=formatoPeso(monRec);
-  document.getElementById('rTotal').textContent=formatoPeso(total);
-  document.getElementById('rPagado').textContent=formatoPeso(pagado);
-  document.getElementById('rSaldo').textContent=formatoPeso(saldo);
+  const fp     = document.getElementById('ventaFormaPago').value;
+  const sub    = cant * precio;
+  let monRec=0, total=sub;
+
+  if (fp === 'cuotas') {
+    const cuotas    = parseInt(document.getElementById('ventaCuotas').value)||1;
+    const recargoPct= parseFloat(document.getElementById('ventaRecargo').value)||0;
+    const moraPct   = parseFloat(document.getElementById('ventaMoraPct').value)||0;
+    const gastosPct = parseFloat(document.getElementById('ventaGastosAdminPct').value)||0;
+    monRec = sub * (recargoPct/100);
+    total  = sub + monRec;
+    const cuotaVal   = cuotas > 0 ? total/cuotas : total;
+    const mora       = cuotaVal * (moraPct/100);
+    const gastos     = cuotaVal * (gastosPct/100);
+    const cuotaTarde = cuotaVal + mora + gastos;
+    document.getElementById('rResumenCuotasIndividual').innerHTML = `
+      <div><span class="r-label">Precio contado:</span><span class="r-valor">${formatoPeso(sub)}</span></div>
+      ${recargoPct>0?`<div><span class="r-label">Recargo ${recargoPct}%:</span><span class="r-valor" style="color:var(--naranja)">+ ${formatoPeso(monRec)}</span></div>`:''}
+      <div><span class="r-label">💡 ${cuotas} cuota${cuotas!==1?'s':''} de:</span><span class="r-valor" style="color:var(--azul-accion)">${formatoPeso(cuotaVal)}</span></div>
+      ${(moraPct>0||gastosPct>0)?`<div class="r-mora">Si paga tarde: ${formatoPeso(cuotaVal)} + mora ${moraPct}% + admin ${gastosPct}% = <b>${formatoPeso(cuotaTarde)}</b></div>`:''}
+    `;
+  } else if (fp === 'cuenta_corriente') {
+    const recargoCta = parseFloat(document.getElementById('ventaRecargoCta').value)||0;
+    monRec = sub * (recargoCta/100);
+    total  = sub + monRec;
+  }
+
+  const saldo = Math.max(0, total - pagado);
+  document.getElementById('rSubtotal').textContent = formatoPeso(sub);
+  document.getElementById('rRecargo').textContent  = formatoPeso(monRec);
+  document.getElementById('rTotal').textContent    = formatoPeso(total);
+  document.getElementById('rPagado').textContent   = formatoPeso(pagado);
+  document.getElementById('rSaldo').textContent    = formatoPeso(saldo);
 }
 
 async function guardarVenta() {
@@ -772,12 +842,20 @@ async function guardarVenta() {
   const fecha  = document.getElementById('ventaFecha').value||hoyISO();
   const precio = parseFloat(document.getElementById('ventaPrecio').value)||0;
   const cant   = parseInt(document.getElementById('ventaCantidad').value)||1;
-  const recargo= parseFloat(document.getElementById('ventaRecargo').value)||0;
   const pagado = parseFloat(document.getElementById('ventaPagado').value)||0;
-  const cuotas = parseInt(document.getElementById('ventaCuotas').value)||1;
   const fp     = document.getElementById('ventaFormaPago').value;
   const cliId  = document.getElementById('ventaCliente').value||null;
   const notas  = document.getElementById('ventaNotas').value.trim()||null;
+
+  // Datos de cuotas mensuales
+  const esCuotasMensuales = fp === 'cuotas';
+  const cuotas     = parseInt(document.getElementById('ventaCuotas').value)||1;
+  const recargo    = esCuotasMensuales
+    ? parseFloat(document.getElementById('ventaRecargo').value)||0
+    : parseFloat(document.getElementById('ventaRecargoCta').value)||0;
+  const diaVenc    = esCuotasMensuales ? (parseInt(document.getElementById('ventaDiaVenc').value)||10) : null;
+  const moraPct    = esCuotasMensuales ? (parseFloat(document.getElementById('ventaMoraPct').value)||0) : 0;
+  const gastosPct  = esCuotasMensuales ? (parseFloat(document.getElementById('ventaGastosAdminPct').value)||0) : 0;
 
   if (!artId)  { mostrarAlerta('Seleccioná un artículo','error'); return; }
   if (!precio) { mostrarAlerta('El precio no puede ser 0','error'); return; }
@@ -793,8 +871,12 @@ async function guardarVenta() {
   try {
     const{data:vd,error}=await sb.from('ventas').insert({
       empresa_id:empresaId,cliente_id:cliId,articulo_id:artId,articulo_nombre:artSel?.nombre||null,
-      cantidad:cant,precio_unitario:precio,total,forma_pago:fp,estado,pagado,saldo,
-      es_cuotas:fp==='cuenta_corriente'&&cuotas>1,cantidad_cuotas:cuotas,recargo_pct:recargo,
+      cantidad:cant,precio_unitario:precio,total,
+      forma_pago: esCuotasMensuales ? 'cuotas' : fp,
+      estado,pagado,saldo,
+      es_cuotas: (esCuotasMensuales || fp==='cuenta_corriente') && cuotas>1,
+      cantidad_cuotas:cuotas, recargo_pct:recargo,
+      mora_pct:moraPct,
       codigo_venta:codigo,notas,fecha_venta:fecha,es_carrito:false,
     }).select('id').single();
     if (error) throw error;
