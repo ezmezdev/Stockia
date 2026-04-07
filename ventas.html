@@ -133,7 +133,7 @@
 
     /* ── Panel cuotas por ítem ── */
     .item-pago-select{font-size:12px;padding:4px 8px;border:1px solid var(--borde);border-radius:var(--r-sm);font-family:var(--font);background:#fff;cursor:pointer;max-width:160px;}
-    .item-cuotas-panel{background:#f8faff;border:1px solid #c7d7f5;border-radius:var(--r-md);padding:10px 12px;margin-top:8px;font-size:12px;width:100%;box-sizing:border-box;}
+    .item-cuotas-panel{background:#f8faff;border:1px solid #c7d7f5;border-radius:var(--r-md);padding:14px 16px;font-size:12px;width:100%;box-sizing:border-box;}
     .item-cuotas-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
     .item-cuotas-campo label{font-size:11px;font-weight:700;color:var(--texto-suave);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px;}
     .item-cuotas-campo input{width:100%;padding:5px 8px;border:1px solid var(--borde);border-radius:var(--r-sm);font-size:13px;font-weight:600;font-family:var(--font);}
@@ -977,8 +977,7 @@ function renderCarrito() {
   }
 
   tbody.innerHTML = _carrito.map(item => {
-    // El selector de pago y panel de cuotas van DEBAJO del nombre del artículo
-    const pagoInline = conPago ? `
+    const selectorPago = conPago ? `
       <div style="margin-top:6px">
         <select class="item-pago-select" onchange="actualizarPagoItem('${item.articuloId}',this.value)">
           <option value="efectivo"      ${item.formaPago==='efectivo'?'selected':''}>💵 Efectivo</option>
@@ -986,14 +985,13 @@ function renderCarrito() {
           <option value="tarjeta"       ${item.formaPago==='tarjeta'?'selected':''}>💳 Tarjeta</option>
           <option value="cuotas"        ${item.formaPago==='cuotas'?'selected':''}>📅 Cuotas mensuales</option>
         </select>
-        ${item.formaPago==='cuotas' ? renderPanelCuotasHTML(item) : ''}
       </div>` : '';
 
-    const cols = conPago ? 5 : 5;
-    return `<tr>
+    // Fila principal del ítem
+    const filaItem = `<tr>
       <td style="vertical-align:top">
         <div class="fw-600">${item.articuloNombre}</div>
-        ${pagoInline}
+        ${selectorPago}
       </td>
       <td style="vertical-align:top">
         <div class="cant-control">
@@ -1006,6 +1004,16 @@ function renderCarrito() {
       <td style="vertical-align:top;white-space:nowrap"><b>${formatoPeso(item.subtotal)}</b></td>
       <td style="vertical-align:top"><button class="btn btn-sm btn-peligro" onclick="quitarDelCarrito('${item.articuloId}')" title="Quitar">✕</button></td>
     </tr>`;
+
+    // Fila extra para el panel de cuotas — ocupa todo el ancho
+    const filaCuotas = (conPago && item.formaPago === 'cuotas') ? `
+    <tr>
+      <td colspan="5" style="padding-top:0;padding-bottom:8px;border-top:none">
+        ${renderPanelCuotasHTML(item)}
+      </td>
+    </tr>` : '';
+
+    return filaItem + filaCuotas;
   }).join('');
 
   actualizarTotalCarrito();
