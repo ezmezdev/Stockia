@@ -462,11 +462,11 @@
       <table class="carrito-tabla" id="carrTabla">
         <thead>
           <tr>
-            <th>Artículo</th><th>Cantidad</th><th>Precio</th><th>Forma de pago</th><th>Subtotal</th><th></th>
+            <th>Artículo</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th><th></th>
           </tr>
         </thead>
         <tbody id="carrItems">
-          <tr><td colspan="6" class="carrito-vacio">Sin artículos todavía.<br>Buscá uno arriba para agregarlo.</td></tr>
+          <tr><td colspan="5" class="carrito-vacio">Sin artículos todavía.<br>Buscá uno arriba para agregarlo.</td></tr>
         </tbody>
       </table>
     </div>
@@ -977,30 +977,34 @@ function renderCarrito() {
   }
 
   tbody.innerHTML = _carrito.map(item => {
-    const pagoCol = conPago ? `
-      <td class="td-pago">
+    // El selector de pago y panel de cuotas van DEBAJO del nombre del artículo
+    const pagoInline = conPago ? `
+      <div style="margin-top:6px">
         <select class="item-pago-select" onchange="actualizarPagoItem('${item.articuloId}',this.value)">
-          <option value="efectivo"    ${item.formaPago==='efectivo'?'selected':''}>💵 Efectivo</option>
+          <option value="efectivo"      ${item.formaPago==='efectivo'?'selected':''}>💵 Efectivo</option>
           <option value="transferencia" ${item.formaPago==='transferencia'?'selected':''}>🏦 Transferencia</option>
-          <option value="tarjeta"     ${item.formaPago==='tarjeta'?'selected':''}>💳 Tarjeta</option>
-          <option value="cuotas"      ${item.formaPago==='cuotas'?'selected':''}>📅 Cuotas mensuales</option>
+          <option value="tarjeta"       ${item.formaPago==='tarjeta'?'selected':''}>💳 Tarjeta</option>
+          <option value="cuotas"        ${item.formaPago==='cuotas'?'selected':''}>📅 Cuotas mensuales</option>
         </select>
         ${item.formaPago==='cuotas' ? renderPanelCuotasHTML(item) : ''}
-      </td>` : '';
+      </div>` : '';
 
+    const cols = conPago ? 5 : 5;
     return `<tr>
-      <td class="fw-600" style="min-width:120px">${item.articuloNombre}</td>
-      <td>
+      <td style="vertical-align:top">
+        <div class="fw-600">${item.articuloNombre}</div>
+        ${pagoInline}
+      </td>
+      <td style="vertical-align:top">
         <div class="cant-control">
           <button class="cant-btn" onclick="cambiarCantidadCarrito('${item.articuloId}',-1)">−</button>
           <span class="cant-num">${item.cantidad}</span>
           <button class="cant-btn" onclick="cambiarCantidadCarrito('${item.articuloId}',1)">＋</button>
         </div>
       </td>
-      <td style="white-space:nowrap">${formatoPeso(item.precio)}</td>
-      ${pagoCol}
-      <td style="white-space:nowrap"><b>${formatoPeso(item.subtotal)}</b></td>
-      <td><button class="btn btn-sm btn-peligro" onclick="quitarDelCarrito('${item.articuloId}')" title="Quitar">✕</button></td>
+      <td style="vertical-align:top;white-space:nowrap">${formatoPeso(item.precio)}</td>
+      <td style="vertical-align:top;white-space:nowrap"><b>${formatoPeso(item.subtotal)}</b></td>
+      <td style="vertical-align:top"><button class="btn btn-sm btn-peligro" onclick="quitarDelCarrito('${item.articuloId}')" title="Quitar">✕</button></td>
     </tr>`;
   }).join('');
 
