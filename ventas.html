@@ -131,7 +131,17 @@
     .cant-btn:hover{background:var(--bg);}
     .cant-num{font-weight:700;min-width:20px;text-align:center;}
 
-    /* ── Detalle ítem carrito ── */
+    /* ── Panel cuotas por ítem ── */
+    .item-pago-select{font-size:12px;padding:4px 8px;border:1px solid var(--borde);border-radius:var(--r-sm);font-family:var(--font);background:#fff;cursor:pointer;max-width:160px;}
+    .item-cuotas-panel{background:#f8faff;border:1px solid #c7d7f5;border-radius:var(--r-md);padding:10px 12px;margin-top:8px;font-size:12px;}
+    .item-cuotas-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+    .item-cuotas-campo label{font-size:11px;font-weight:700;color:var(--texto-suave);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px;}
+    .item-cuotas-campo input{width:100%;padding:5px 8px;border:1px solid var(--borde);border-radius:var(--r-sm);font-size:13px;font-weight:600;font-family:var(--font);}
+    .item-cuotas-resumen{background:#fff;border:1px solid #c7d7f5;border-radius:var(--r-sm);padding:8px 10px;font-size:12px;line-height:1.7;}
+    .item-cuotas-resumen .r-label{color:var(--texto-suave);}
+    .item-cuotas-resumen .r-valor{font-weight:700;float:right;}
+    .item-cuotas-resumen .r-mora{color:var(--naranja);font-size:11px;margin-top:4px;padding-top:4px;border-top:1px dashed #e5e7eb;}
+    .carrito-tabla td.td-pago{vertical-align:top;min-width:180px;}
     .item-devuelto{opacity:.45;text-decoration:line-through;}
 
     @media(min-width:600px){.resumen-cards{grid-template-columns:repeat(3,1fr);}}
@@ -452,11 +462,11 @@
       <table class="carrito-tabla" id="carrTabla">
         <thead>
           <tr>
-            <th>Artículo</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th><th></th>
+            <th>Artículo</th><th>Cantidad</th><th>Precio</th><th>Forma de pago</th><th>Subtotal</th><th></th>
           </tr>
         </thead>
         <tbody id="carrItems">
-          <tr><td colspan="5" class="carrito-vacio">Sin artículos todavía.<br>Buscá uno arriba para agregarlo.</td></tr>
+          <tr><td colspan="6" class="carrito-vacio">Sin artículos todavía.<br>Buscá uno arriba para agregarlo.</td></tr>
         </tbody>
       </table>
     </div>
@@ -467,14 +477,20 @@
       <div class="carrito-total-valor" id="carrTotal">$0</div>
     </div>
 
-    <!-- Forma de pago -->
-    <div class="form-grupo">
+    <!-- Forma de pago global (solo modo carrito/kiosco) -->
+    <div class="form-grupo" id="carrGrupoFormaPago">
       <label class="form-label">Forma de pago</label>
       <select class="form-select" id="carrFormaPago">
         <option value="efectivo">💵 Efectivo</option>
         <option value="transferencia">🏦 Transferencia</option>
         <option value="tarjeta">💳 Tarjeta</option>
       </select>
+    </div>
+
+    <!-- Campo vendedor -->
+    <div class="form-grupo">
+      <label class="form-label">Vendedor <small class="texto-suave">(opcional)</small></label>
+      <input type="text" class="form-input" id="carrVendedor" placeholder="Nombre del vendedor">
     </div>
 
     <div class="form-grupo">
@@ -799,20 +815,26 @@ async function guardarVenta() {
 // ════════════════════════════════════════════════════════════
 async function abrirCarrito() {
   _carrito = [];
-  document.getElementById('carrFecha').value  = hoyISO();
+  document.getElementById('carrFecha').value    = hoyISO();
   document.getElementById('carrBusqueda').value = '';
   document.getElementById('carrResultados').style.display = 'none';
-  document.getElementById('carrNotas').value  = '';
+  document.getElementById('carrNotas').value    = '';
+  document.getElementById('carrVendedor').value = '';
   document.getElementById('carrFormaPago').value = 'efectivo';
-  document.getElementById('carrCodigo').value = '';
+  document.getElementById('carrCodigo').value   = '';
   document.getElementById('carrErrCodigo').classList.remove('visible');
 
-  // Mostrar selector de cliente si módulo activo
+  // Modo carrito puro → forma de pago global visible
+  // Modo individual/ambos → forma de pago por ítem, ocultar global
+  const modoVentas = _configFunciones.modo_ventas || (kiosco ? 'carrito' : 'individual');
+  const esKioscoModal = modoVentas === 'carrito';
+  document.getElementById('carrGrupoFormaPago').style.display = esKioscoModal ? 'block' : 'none';
+
+  // Cliente
   const grpCli = document.getElementById('grupoClienteCarrito');
   grpCli.style.display = tieneClientes ? 'block' : 'none';
   if (tieneClientes) {
     document.getElementById('carrCliente').value = '';
-    // Reusar la misma lista de clientes ya cargada
     document.getElementById('carrCliente').innerHTML =
       `<option value="">— Consumidor final —</option>` +
       clientes.map(c=>`<option value="${c.id}">${c.nombre}${c.codigo?' #'+c.codigo:''}</option>`).join('');
@@ -859,7 +881,6 @@ function agregarAlCarrito(artId) {
   const art = articulos.find(a => a.id === artId);
   if (!art) return;
 
-  // Si ya está en el carrito, incrementar cantidad
   const existente = _carrito.find(i => i.articuloId === artId);
   if (existente) {
     if (existente.cantidad >= art.stock) {
@@ -878,6 +899,13 @@ function agregarAlCarrito(artId) {
       precio:         Number(art.precio),
       subtotal:       Number(art.precio),
       stockMax:       art.stock,
+      // Pago por ítem
+      formaPago:      'efectivo',
+      cuotas:         1,
+      recargoPct:     0,
+      diaVencimiento: 10,
+      moraPct:        0,
+      gastosAdminPct: 0,
     });
   }
 
@@ -891,15 +919,42 @@ function cambiarCantidadCarrito(artId, delta) {
   const item = _carrito.find(i => i.articuloId === artId);
   if (!item) return;
   const nueva = item.cantidad + delta;
-  if (nueva <= 0) {
-    quitarDelCarrito(artId); return;
-  }
-  if (nueva > item.stockMax) {
-    mostrarAlerta(`Stock máximo: ${item.stockMax}`, 'info'); return;
-  }
+  if (nueva <= 0) { quitarDelCarrito(artId); return; }
+  if (nueva > item.stockMax) { mostrarAlerta(`Stock máximo: ${item.stockMax}`, 'info'); return; }
   item.cantidad = nueva;
-  item.subtotal = nueva * item.precio;
+  recalcularItemSubtotal(item);
   renderCarrito();
+}
+
+function recalcularItemSubtotal(item) {
+  const base = item.cantidad * item.precio;
+  if (item.formaPago === 'cuotas') {
+    const recargo = base * (item.recargoPct / 100);
+    item.subtotal = base + recargo;
+  } else {
+    item.subtotal = base;
+  }
+}
+
+// Actualizar forma de pago de un ítem
+function actualizarPagoItem(artId, fp) {
+  const item = _carrito.find(i => i.articuloId === artId);
+  if (!item) return;
+  item.formaPago = fp;
+  recalcularItemSubtotal(item);
+  renderCarrito();
+  // Mantener foco en el select después de re-render
+}
+
+// Actualizar campo numérico de cuotas de un ítem
+function actualizarCampoItem(artId, campo, valor) {
+  const item = _carrito.find(i => i.articuloId === artId);
+  if (!item) return;
+  item[campo] = parseFloat(valor) || 0;
+  recalcularItemSubtotal(item);
+  // Re-render solo el resumen de ese ítem sin re-renderizar toda la tabla
+  renderResumenCuotas(artId);
+  actualizarTotalCarrito();
 }
 
 function quitarDelCarrito(artId) {
@@ -908,19 +963,33 @@ function quitarDelCarrito(artId) {
 }
 
 function renderCarrito() {
-  const tbody = document.getElementById('carrItems');
-  const totalBar = document.getElementById('carrTotalBar');
+  const tbody   = document.getElementById('carrItems');
+  const totalBar= document.getElementById('carrTotalBar');
+
+  const modoVentas = _configFunciones.modo_ventas || (kiosco ? 'carrito' : 'individual');
+  const conPago    = modoVentas !== 'carrito'; // Mostrar col forma de pago si no es kiosco puro
 
   if (!_carrito.length) {
-    tbody.innerHTML = `<tr><td colspan="5" class="carrito-vacio">Sin artículos todavía.<br>Buscá uno arriba para agregarlo.</td></tr>`;
+    const cols = conPago ? 6 : 5;
+    tbody.innerHTML = `<tr><td colspan="${cols}" class="carrito-vacio">Sin artículos todavía.<br>Buscá uno arriba para agregarlo.</td></tr>`;
     totalBar.style.display = 'none';
     return;
   }
 
-  const totalGeneral = _carrito.reduce((s,i) => s+i.subtotal, 0);
-  tbody.innerHTML = _carrito.map(item => `
-    <tr>
-      <td class="fw-600">${item.articuloNombre}</td>
+  tbody.innerHTML = _carrito.map(item => {
+    const pagoCol = conPago ? `
+      <td class="td-pago">
+        <select class="item-pago-select" onchange="actualizarPagoItem('${item.articuloId}',this.value)">
+          <option value="efectivo"    ${item.formaPago==='efectivo'?'selected':''}>💵 Efectivo</option>
+          <option value="transferencia" ${item.formaPago==='transferencia'?'selected':''}>🏦 Transferencia</option>
+          <option value="tarjeta"     ${item.formaPago==='tarjeta'?'selected':''}>💳 Tarjeta</option>
+          <option value="cuotas"      ${item.formaPago==='cuotas'?'selected':''}>📅 Cuotas mensuales</option>
+        </select>
+        ${item.formaPago==='cuotas' ? renderPanelCuotasHTML(item) : ''}
+      </td>` : '';
+
+    return `<tr>
+      <td class="fw-600" style="min-width:120px">${item.articuloNombre}</td>
       <td>
         <div class="cant-control">
           <button class="cant-btn" onclick="cambiarCantidadCarrito('${item.articuloId}',-1)">−</button>
@@ -928,16 +997,91 @@ function renderCarrito() {
           <button class="cant-btn" onclick="cambiarCantidadCarrito('${item.articuloId}',1)">＋</button>
         </div>
       </td>
-      <td>${formatoPeso(item.precio)}</td>
-      <td><b>${formatoPeso(item.subtotal)}</b></td>
-      <td>
-        <button class="btn btn-sm btn-peligro" onclick="quitarDelCarrito('${item.articuloId}')" title="Quitar">✕</button>
-      </td>
-    </tr>
-  `).join('');
+      <td style="white-space:nowrap">${formatoPeso(item.precio)}</td>
+      ${pagoCol}
+      <td style="white-space:nowrap"><b>${formatoPeso(item.subtotal)}</b></td>
+      <td><button class="btn btn-sm btn-peligro" onclick="quitarDelCarrito('${item.articuloId}')" title="Quitar">✕</button></td>
+    </tr>`;
+  }).join('');
 
-  totalBar.style.display = 'flex';
-  document.getElementById('carrTotal').textContent = formatoPeso(totalGeneral);
+  actualizarTotalCarrito();
+}
+
+function renderPanelCuotasHTML(item) {
+  const base     = item.cantidad * item.precio;
+  const recargo  = base * (item.recargoPct / 100);
+  const total    = base + recargo;
+  const cuotaVal = item.cuotas > 0 ? total / item.cuotas : total;
+  const mora     = cuotaVal * (item.moraPct / 100);
+  const gastos   = cuotaVal * (item.gastosAdminPct / 100);
+  const cuotaTarde = cuotaVal + mora + gastos;
+
+  return `<div class="item-cuotas-panel">
+    <div class="item-cuotas-grid">
+      <div class="item-cuotas-campo">
+        <label>N° de cuotas</label>
+        <input type="number" value="${item.cuotas||1}" min="1" max="60"
+          onchange="actualizarCampoItem('${item.articuloId}','cuotas',this.value)">
+      </div>
+      <div class="item-cuotas-campo">
+        <label>Recargo (%)</label>
+        <input type="number" value="${item.recargoPct||0}" min="0" step="0.5"
+          onchange="actualizarCampoItem('${item.articuloId}','recargoPct',this.value)">
+      </div>
+      <div class="item-cuotas-campo">
+        <label>Día vencimiento</label>
+        <input type="number" value="${item.diaVencimiento||10}" min="1" max="31"
+          onchange="actualizarCampoItem('${item.articuloId}','diaVencimiento',this.value)">
+      </div>
+      <div class="item-cuotas-campo">
+        <label>% Mora</label>
+        <input type="number" value="${item.moraPct||0}" min="0" step="0.5"
+          onchange="actualizarCampoItem('${item.articuloId}','moraPct',this.value)">
+      </div>
+      <div class="item-cuotas-campo" style="grid-column:1/-1">
+        <label>% Gastos administrativos (por mora)</label>
+        <input type="number" value="${item.gastosAdminPct||0}" min="0" step="0.5"
+          onchange="actualizarCampoItem('${item.articuloId}','gastosAdminPct',this.value)">
+      </div>
+    </div>
+    <div class="item-cuotas-resumen" id="resumen-cuotas-${item.articuloId}">
+      <div><span class="r-label">Precio contado:</span><span class="r-valor">${formatoPeso(base)}</span></div>
+      ${item.recargoPct>0?`<div><span class="r-label">Recargo ${item.recargoPct}%:</span><span class="r-valor" style="color:var(--naranja)">+ ${formatoPeso(recargo)}</span></div>`:''}
+      <div><span class="r-label">💡 ${item.cuotas} cuota${item.cuotas!==1?'s':''} de:</span><span class="r-valor" style="color:var(--azul-accion)">${formatoPeso(cuotaVal)}</span></div>
+      ${(item.moraPct>0||item.gastosAdminPct>0)?`<div class="r-mora">Si paga tarde: ${formatoPeso(cuotaVal)} + mora ${item.moraPct}% + admin ${item.gastosAdminPct}% = <b>${formatoPeso(cuotaTarde)}</b></div>`:''}
+    </div>
+  </div>`;
+}
+
+function renderResumenCuotas(artId) {
+  const item = _carrito.find(i => i.articuloId === artId);
+  if (!item || item.formaPago !== 'cuotas') return;
+  const el = document.getElementById(`resumen-cuotas-${artId}`);
+  if (!el) return;
+  const base     = item.cantidad * item.precio;
+  const recargo  = base * (item.recargoPct / 100);
+  const total    = base + recargo;
+  const cuotaVal = item.cuotas > 0 ? total / item.cuotas : total;
+  const mora     = cuotaVal * (item.moraPct / 100);
+  const gastos   = cuotaVal * (item.gastosAdminPct / 100);
+  const cuotaTarde = cuotaVal + mora + gastos;
+  el.innerHTML = `
+    <div><span class="r-label">Precio contado:</span><span class="r-valor">${formatoPeso(base)}</span></div>
+    ${item.recargoPct>0?`<div><span class="r-label">Recargo ${item.recargoPct}%:</span><span class="r-valor" style="color:var(--naranja)">+ ${formatoPeso(recargo)}</span></div>`:''}
+    <div><span class="r-label">💡 ${item.cuotas} cuota${item.cuotas!==1?'s':''} de:</span><span class="r-valor" style="color:var(--azul-accion)">${formatoPeso(cuotaVal)}</span></div>
+    ${(item.moraPct>0||item.gastosAdminPct>0)?`<div class="r-mora">Si paga tarde: ${formatoPeso(cuotaVal)} + mora ${item.moraPct}% + admin ${item.gastosAdminPct}% = <b>${formatoPeso(cuotaTarde)}</b></div>`:''}
+  `;
+}
+
+function actualizarTotalCarrito() {
+  const totalBar = document.getElementById('carrTotalBar');
+  const total = _carrito.reduce((s,i) => s+i.subtotal, 0);
+  if (_carrito.length) {
+    totalBar.style.display = 'flex';
+    document.getElementById('carrTotal').textContent = formatoPeso(total);
+  } else {
+    totalBar.style.display = 'none';
+  }
 }
 
 function usarSugeridoCarrito() {
@@ -951,11 +1095,17 @@ function limpiarErrCarrCodigo() {
 async function guardarCarrito() {
   if (!_carrito.length) { mostrarAlerta('Agregá al menos un artículo', 'error'); return; }
 
-  const fecha  = document.getElementById('carrFecha').value || hoyISO();
-  const fp     = document.getElementById('carrFormaPago').value;
-  const notas  = document.getElementById('carrNotas').value.trim()||null;
-  const cliId  = tieneClientes ? (document.getElementById('carrCliente').value||null) : null;
-  const codigo = document.getElementById('carrCodigo').value.trim()||null;
+  const fecha    = document.getElementById('carrFecha').value || hoyISO();
+  const notas    = document.getElementById('carrNotas').value.trim()||null;
+  const vendedor = document.getElementById('carrVendedor').value.trim()||null;
+  const cliId    = tieneClientes ? (document.getElementById('carrCliente').value||null) : null;
+  const codigo   = document.getElementById('carrCodigo').value.trim()||null;
+
+  const modoVentas  = _configFunciones.modo_ventas || (kiosco ? 'carrito' : 'individual');
+  const esKioscoModal = modoVentas === 'carrito';
+
+  // Forma de pago: global para kiosco, mixta para individual/ambos
+  const fpGlobal = document.getElementById('carrFormaPago').value;
 
   if (codigo) {
     const unico = await codigoEsUnico('ventas','codigo_venta',codigo,empresaId,null);
@@ -963,65 +1113,85 @@ async function guardarCarrito() {
   }
 
   const total = _carrito.reduce((s,i) => s+i.subtotal, 0);
-  // En kiosco siempre se paga al momento (no deuda)
-  const estado = 'pagado';
+
+  // Determinar estado: si hay ítems en cuotas → hay saldo pendiente
+  const tieneCuotas = !esKioscoModal && _carrito.some(i => i.formaPago === 'cuotas');
+  // Para ítems en cuotas el pago inicial es 0 (se paga en cuotas)
+  // Para ítems al contado el pago es inmediato
+  const totalContado = esKioscoModal
+    ? total
+    : _carrito.filter(i => i.formaPago !== 'cuotas').reduce((s,i) => s+i.subtotal, 0);
+  const totalCuotas  = esKioscoModal ? 0 : _carrito.filter(i => i.formaPago === 'cuotas').reduce((s,i) => s+i.subtotal, 0);
+  const estado = totalCuotas > 0 ? (totalContado > 0 ? 'parcial' : 'pendiente') : 'pagado';
+
+  // Forma de pago principal de la venta (la más usada o global)
+  const fpPrincipal = esKioscoModal ? fpGlobal : (
+    _carrito.every(i => i.formaPago === _carrito[0].formaPago)
+      ? _carrito[0].formaPago
+      : 'mixto'
+  );
 
   const btn = document.getElementById('btnGuardarCarrito');
   btn.disabled = true; btn.textContent = 'Guardando...';
 
   try {
-    // 1. Insertar venta cabecera (es_carrito=true, sin articulo_id individual)
+    // 1. Insertar venta cabecera
     const { data: vd, error: ev } = await sb.from('ventas').insert({
-      empresa_id:     empresaId,
-      cliente_id:     cliId,
+      empresa_id:      empresaId,
+      cliente_id:      cliId,
       articulo_nombre: `${_carrito.length} artículo${_carrito.length!==1?'s':''}`,
       total,
-      forma_pago:     fp,
+      forma_pago:      fpPrincipal,
       estado,
-      pagado:         total,
-      saldo:          0,
+      pagado:          totalContado,
+      saldo:           totalCuotas,
       notas,
-      codigo_venta:   codigo,
-      fecha_venta:    fecha,
-      es_carrito:     true,
-      cantidad:       _carrito.reduce((s,i)=>s+i.cantidad, 0),
+      codigo_venta:    codigo,
+      fecha_venta:     fecha,
+      es_carrito:      true,
+      cantidad:        _carrito.reduce((s,i)=>s+i.cantidad, 0),
     }).select('id').single();
     if (ev) throw ev;
 
     const ventaId = vd.id;
 
-    // 2. Insertar ítems del carrito
+    // 2. Insertar ítems con datos de pago y cuotas
     const items = _carrito.map(i => ({
-      empresa_id:      empresaId,
-      venta_id:        ventaId,
-      articulo_id:     i.articuloId,
-      articulo_nombre: i.articuloNombre,
-      cantidad:        i.cantidad,
-      precio_unitario: i.precio,
-      subtotal:        i.subtotal,
-      devuelto:        false,
+      empresa_id:       empresaId,
+      venta_id:         ventaId,
+      articulo_id:      i.articuloId,
+      articulo_nombre:  i.articuloNombre,
+      cantidad:         i.cantidad,
+      precio_unitario:  i.precio,
+      subtotal:         i.subtotal,
+      devuelto:         false,
+      forma_pago:       esKioscoModal ? fpGlobal : (i.formaPago||'efectivo'),
+      es_cuotas:        i.formaPago === 'cuotas',
+      cantidad_cuotas:  i.formaPago === 'cuotas' ? (i.cuotas||1) : 1,
+      recargo_pct:      i.formaPago === 'cuotas' ? (i.recargoPct||0) : 0,
+      dia_vencimiento:  i.formaPago === 'cuotas' ? (i.diaVencimiento||10) : null,
+      mora_pct:         i.formaPago === 'cuotas' ? (i.moraPct||0) : 0,
+      gastos_admin_pct: i.formaPago === 'cuotas' ? (i.gastosAdminPct||0) : 0,
     }));
     const { error: ei } = await sb.from('venta_items').insert(items);
     if (ei) throw ei;
 
-    // 3. Descontar stock de cada artículo
+    // 3. Descontar stock
     for (const item of _carrito) {
       const art = articulos.find(a => a.id === item.articuloId);
-      if (art) {
-        await sb.from('articulos')
-          .update({ stock: Math.max(0, art.stock - item.cantidad) })
-          .eq('id', item.articuloId);
-      }
+      if (art) await sb.from('articulos').update({ stock: Math.max(0, art.stock - item.cantidad) }).eq('id', item.articuloId);
     }
 
-    // 4. Registrar el pago en tabla pagos
-    await sb.from('pagos').insert({
-      empresa_id: empresaId,
-      venta_id:   ventaId,
-      monto:      total,
-      fecha,
-      notas:      `Pago ${PAGO_LABEL[fp]||fp}`,
-    });
+    // 4. Registrar pago solo por los ítems al contado
+    if (totalContado > 0) {
+      await sb.from('pagos').insert({
+        empresa_id: empresaId,
+        venta_id:   ventaId,
+        monto:      totalContado,
+        fecha,
+        notas:      esKioscoModal ? `Pago ${PAGO_LABEL[fpGlobal]||fpGlobal}` : 'Pago contado',
+      });
+    }
 
     mostrarAlerta('Venta registrada ✓', 'exito');
     cerrarModal('modalCarrito');
