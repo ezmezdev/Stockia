@@ -1450,11 +1450,46 @@ async function cargarDetallePanel(ventaId) {
       subtotal:        v.total || 0,
       devuelto:        false,
       _esIndividual:   true,
+      // Datos de cuotas si aplica
+      es_cuotas:       v.es_cuotas || (v.forma_pago === 'cuotas'),
+      forma_pago:      v.forma_pago,
+      cantidad_cuotas: v.cantidad_cuotas || 1,
+      recargo_pct:     v.recargo_pct || 0,
+      mora_pct:        v.mora_pct || 0,
+      dia_vencimiento: v.dia_vencimiento || null,
     }];
   }
 
   _itemsCache[ventaId] = items;
   renderDetallePanel(ventaId, items);
+}
+
+function desgloseCuotasHTML(it) {
+  if (!it.es_cuotas && it.forma_pago !== 'cuotas') return '';
+  const base      = Number(it.precio_unitario||0) * Number(it.cantidad||1);
+  const monRec    = base * ((it.recargo_pct||0) / 100);
+  const total     = base + monRec;
+  const cuotas    = it.cantidad_cuotas || 1;
+  const cuotaVal  = cuotas > 0 ? total / cuotas : total;
+  const moraPct   = it.mora_pct || 0;
+  const gastosPct = it.gastos_admin_pct || 0;
+  const cuotaTarde = cuotaVal + cuotaVal*(moraPct/100) + cuotaVal*(gastosPct/100);
+  const diaVenc   = it.dia_vencimiento;
+  return `<div class="item-cuotas-panel" style="margin-top:6px">
+    <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;margin-bottom:8px">
+      <span><b>${cuotas}</b> cuota${cuotas!==1?'s':''}</span>
+      ${it.recargo_pct>0?`<span style="color:var(--naranja)">Recargo: ${it.recargo_pct}%</span>`:''}
+      ${diaVenc?`<span style="color:var(--texto-suave)">Vence día <b>${diaVenc}</b></span>`:''}
+      ${moraPct>0?`<span style="color:var(--rojo)">Mora: ${moraPct}%</span>`:''}
+      ${gastosPct>0?`<span style="color:var(--rojo)">G.Admin: ${gastosPct}%</span>`:''}
+    </div>
+    <div class="item-cuotas-resumen">
+      <div><span class="r-label">Precio contado:</span><span class="r-valor">${formatoPeso(base)}</span></div>
+      ${it.recargo_pct>0?`<div><span class="r-label">Recargo ${it.recargo_pct}%:</span><span class="r-valor" style="color:var(--naranja)">+ ${formatoPeso(monRec)}</span></div>`:''}
+      <div><span class="r-label">💡 ${cuotas} cuota${cuotas!==1?'s':''} de:</span><span class="r-valor" style="color:var(--azul-accion)">${formatoPeso(cuotaVal)}</span></div>
+      ${(moraPct>0||gastosPct>0)?`<div class="r-mora">Si paga tarde: ${formatoPeso(cuotaVal)} + mora ${moraPct}% + admin ${gastosPct}% = <b>${formatoPeso(cuotaTarde)}</b></div>`:''}
+    </div>
+  </div>`;
 }
 
 function renderDetallePanel(ventaId, items) {
@@ -1476,7 +1511,10 @@ function renderDetallePanel(ventaId, items) {
       <tbody>
         ${items.map(it => `
           <tr class="${it.devuelto ? 'devuelto' : ''}">
-            <td class="fw-600">${it.articulo_nombre}</td>
+            <td>
+              <div class="fw-600">${it.articulo_nombre}</div>
+              ${(it.es_cuotas || it.forma_pago==='cuotas') ? desgloseCuotasHTML(it) : ''}
+            </td>
             <td style="text-align:center">${it.cantidad}</td>
             <td style="text-align:right">${formatoPeso(it.precio_unitario)}</td>
             <td style="text-align:right"><b>${formatoPeso(it.subtotal)}</b></td>
