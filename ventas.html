@@ -298,6 +298,12 @@
           <option value="tarjeta">Tarjeta</option>
           <option value="cuenta_corriente">Cta. corriente</option>
         </select>
+        <select class="form-select" id="filtroOrden" style="width:auto;min-width:160px">
+          <option value="fecha_desc">📅 Más reciente primero</option>
+          <option value="fecha_asc">📅 Más antigua primero</option>
+          <option value="codigo_desc">🔢 Código mayor primero</option>
+          <option value="codigo_asc">🔢 Código menor primero</option>
+        </select>
       </div>
     </div>
 
@@ -325,7 +331,7 @@
             <tr>
               <th>Cód.</th><th>Fecha</th>
               <th id="thClienteCol">Cliente</th>
-              <th>Artículo / Ítems</th><th>Total</th><th>Saldo</th><th>Estado</th><th>Acciones</th>
+              <th style="max-width:160px">Artículo / Ítems</th><th>Total</th><th>Saldo</th><th>Estado</th><th>Acciones</th>
             </tr>
           </thead>
           <tbody id="tablaVentas">
@@ -1374,17 +1380,34 @@ function aplicarFiltros() {
   const q=document.getElementById('filtroQ').value.toLowerCase();
   const estado=document.getElementById('filtroEstado').value;
   const pago=document.getElementById('filtroPago').value;
+  const orden=document.getElementById('filtroOrden').value;
   let lista=todasVentas;
   if(q) lista=lista.filter(v=>(v.clientes?.nombre||'').toLowerCase().includes(q)||(v.articulo_nombre||'').toLowerCase().includes(q)||(v.codigo_venta||'').includes(q));
   if(estado) lista=lista.filter(v=>v.estado===estado);
   if(pago)   lista=lista.filter(v=>v.forma_pago===pago);
+
+  // Ordenar
+  lista = [...lista].sort((a,b) => {
+    if (orden === 'fecha_desc') return new Date(b.fecha_venta||b.created_at) - new Date(a.fecha_venta||a.created_at);
+    if (orden === 'fecha_asc')  return new Date(a.fecha_venta||a.created_at) - new Date(b.fecha_venta||b.created_at);
+    if (orden === 'codigo_desc') {
+      const na = parseInt(a.codigo_venta)||0, nb = parseInt(b.codigo_venta)||0;
+      return nb - na;
+    }
+    if (orden === 'codigo_asc') {
+      const na = parseInt(a.codigo_venta)||0, nb = parseInt(b.codigo_venta)||0;
+      return na - nb;
+    }
+    return 0;
+  });
+
   document.getElementById('svTotal').textContent=formatoPeso(lista.reduce((s,v)=>s+Number(v.total||0),0));
   document.getElementById('svDeuda').textContent=formatoPeso(lista.reduce((s,v)=>s+Number(v.saldo||0),0));
   renderTabla(lista);
 }
 
 function iniciarFiltros() {
-  ['filtroQ','filtroEstado','filtroPago'].forEach(id=>{
+  ['filtroQ','filtroEstado','filtroPago','filtroOrden'].forEach(id=>{
     document.getElementById(id).addEventListener('input',aplicarFiltros);
     document.getElementById(id).addEventListener('change',aplicarFiltros);
   });
@@ -1411,8 +1434,8 @@ function renderTabla(lista) {
       }</td>`;
     const fechaMostrar = v.fecha_venta ? formatoFecha(v.fecha_venta+'T12:00:00') : formatoFecha(v.created_at);
     const artCol = v.es_carrito
-      ? `<span class="badge badge-azul">🛒 ${v.articulo_nombre}</span>`
-      : `${v.articulo_nombre||'-'}${v.cantidad>1?` <span class="badge badge-gris">x${v.cantidad}</span>`:''}`;
+      ? `<span class="badge badge-azul" style="font-size:11px">🛒 ${v.articulo_nombre}</span>`
+      : `<span style="font-size:13px">${v.articulo_nombre||'-'}${v.cantidad>1?` <span class="badge badge-gris">x${v.cantidad}</span>`:''}</span>`;
     const cols = (kiosco&&!tieneClientes) ? 7 : 8;
 
     return `
@@ -1425,7 +1448,7 @@ function renderTabla(lista) {
         </td>
         <td style="white-space:nowrap">${fechaMostrar}</td>
         ${clienteCol}
-        <td class="fw-600">${artCol}</td>
+        <td class="fw-600" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${artCol}</td>
         <td><b>${formatoPeso(v.total)}</b></td>
         <td class="${Number(v.saldo)>0?'texto-rojo fw-600':'texto-suave'}">${formatoPeso(v.saldo)}</td>
         <td><span class="badge ${v.estado==='pagado'?'badge-verde':v.estado==='parcial'?'badge-naranja':'badge-rojo'}">${v.estado}</span></td>
