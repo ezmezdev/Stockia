@@ -733,13 +733,21 @@
     }
 
     async function crearEmpresa() {
-      const nombre = document.getElementById('empNombre').value.trim();
-      const slug   = document.getElementById('empSlug').value.trim();
-      const color  = document.getElementById('empColor').value;
+      const nombre  = document.getElementById('empNombre').value.trim();
+      const slug    = document.getElementById('empSlug').value.trim();
+      const color   = document.getElementById('empColor').value;
       const mNombre = document.getElementById('empModuloNombre').value.trim() || 'Artículos';
       const mIcono  = document.getElementById('empModuloIcono').value.trim()  || '📦';
       const tipo    = document.getElementById('empTipoNegocio').value;
       if (!nombre || !slug) { mostrarAlerta('Nombre y slug son obligatorios', 'error'); return; }
+
+      // Verificar que el slug no exista (incluso en empresas desactivadas)
+      const { data: slugExiste } = await sb.from('empresas').select('id').eq('slug', slug).maybeSingle();
+      if (slugExiste) {
+        mostrarAlerta('El slug "' + slug + '" ya está en uso. Elegí uno diferente.', 'error');
+        document.getElementById('empSlug').focus();
+        return;
+      }
 
       const { error } = await sb.from('empresas').insert({
         nombre, slug, color, tipo_negocio: tipo,
