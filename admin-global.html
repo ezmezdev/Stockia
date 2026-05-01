@@ -687,8 +687,10 @@
     }
 
     // ── Empresas ──────────────────────────────────────────────
+    let _empresasCache = [];
     async function cargarEmpresas() {
       const { data: empresas } = await sb.from('empresas').select('*').order('created_at', { ascending: false });
+      _empresasCache = empresas || [];
       const lista = document.getElementById('listaEmpresas');
 
       if (!empresas?.length) {
@@ -723,7 +725,7 @@
               <button class="btn btn-sm btn-peligro" onclick="toggleEmpresaActiva('${emp.id}', ${emp.activa})">
                 ${emp.activa ? '🔒 Desactivar' : '✓ Activar'}
               </button>
-              <button class="btn btn-sm" style="background:#7f1d1d;color:#fff" onclick="eliminarEmpresa('${emp.id}','${emp.nombre.replace(/'/g,\"\\'\")}')">🗑️ Eliminar</button>
+              <button class="btn btn-sm" style="background:#7f1d1d;color:#fff" onclick="eliminarEmpresa('${emp.id}')">🗑️ Eliminar</button>
             </div>
           </div>
         </div>
@@ -857,18 +859,20 @@
       cargarEmpresas();
     }
 
-    async function eliminarEmpresa(id, nombre) {
+    async function eliminarEmpresa(id) {
+      const emp = _empresasCache.find(e => e.id === id);
+      const nombre = emp?.nombre || 'esta empresa';
       // Primera confirmación
-      if (!confirm(`⚠️ ¿Eliminar la empresa "${nombre}"?\n\nEsta acción eliminará TODOS sus datos:\nartículos, clientes, ventas, arqueos, mensajes y usuarios.\n\nEsta acción es IRREVERSIBLE.`)) return;
-      // Segunda confirmación
-      const confirmacion = prompt(`Para confirmar, escribí el nombre de la empresa:\n"${nombre}"`);
+      if (!confirm('⚠️ ¿Eliminar la empresa "' + nombre + '"?\n\nEsta acción eliminará TODOS sus datos:\nartículos, clientes, ventas, arqueos, mensajes y usuarios.\n\nEsta acción es IRREVERSIBLE.')) return;
+      // Segunda confirmación — escribir el nombre
+      const confirmacion = prompt('Para confirmar, escribí el nombre de la empresa:\n"' + nombre + '"');
       if (confirmacion !== nombre) {
         mostrarAlerta('El nombre no coincide. La empresa NO fue eliminada.', 'error');
         return;
       }
       const { error } = await sb.from('empresas').delete().eq('id', id);
       if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
-      mostrarAlerta(`Empresa "${nombre}" eliminada ✓`, 'exito');
+      mostrarAlerta('Empresa "' + nombre + '" eliminada ✓', 'exito');
       cargarEmpresas();
     }
 
