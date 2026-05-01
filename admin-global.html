@@ -719,9 +719,12 @@
               <button class="btn btn-sm btn-naranja" onclick="exportarEmpresaJSON('${emp.id}','${emp.nombre}')">⬇️ Backup</button>
               <button class="btn btn-sm" style="background:#7c3aed;color:#fff" onclick="abrirMensaje('${emp.id}','${emp.nombre.replace(/'/g,"\\'")}')">📢 Mensaje</button>
             </div>
-            <button class="btn btn-sm btn-peligro" onclick="toggleEmpresaActiva('${emp.id}', ${emp.activa})">
-              ${emp.activa ? '🔒 Desactivar' : '✓ Activar'}
-            </button>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-sm btn-peligro" onclick="toggleEmpresaActiva('${emp.id}', ${emp.activa})">
+                ${emp.activa ? '🔒 Desactivar' : '✓ Activar'}
+              </button>
+              <button class="btn btn-sm" style="background:#7f1d1d;color:#fff" onclick="eliminarEmpresa('${emp.id}','${emp.nombre.replace(/'/g,\"\\'\")}')">🗑️ Eliminar</button>
+            </div>
           </div>
         </div>
       `).join('');
@@ -851,6 +854,21 @@
       const { error } = await sb.from('empresas').update({ activa: !activa }).eq('id', id);
       if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
       mostrarAlerta(activa ? 'Empresa desactivada' : 'Empresa activada ✓', activa ? 'info' : 'exito');
+      cargarEmpresas();
+    }
+
+    async function eliminarEmpresa(id, nombre) {
+      // Primera confirmación
+      if (!confirm(`⚠️ ¿Eliminar la empresa "${nombre}"?\n\nEsta acción eliminará TODOS sus datos:\nartículos, clientes, ventas, arqueos, mensajes y usuarios.\n\nEsta acción es IRREVERSIBLE.`)) return;
+      // Segunda confirmación
+      const confirmacion = prompt(`Para confirmar, escribí el nombre de la empresa:\n"${nombre}"`);
+      if (confirmacion !== nombre) {
+        mostrarAlerta('El nombre no coincide. La empresa NO fue eliminada.', 'error');
+        return;
+      }
+      const { error } = await sb.from('empresas').delete().eq('id', id);
+      if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
+      mostrarAlerta(`Empresa "${nombre}" eliminada ✓`, 'exito');
       cargarEmpresas();
     }
 
