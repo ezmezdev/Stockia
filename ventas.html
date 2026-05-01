@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Stockia — Ventas</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1a2f6b">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <!-- v4.4 -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/global.css?v=4.0">
@@ -147,6 +151,7 @@
     @media(min-width:600px){.resumen-cards{grid-template-columns:repeat(3,1fr);}}
     @media(min-width:900px){.resumen-cards{grid-template-columns:repeat(5,1fr);}.resumen-card.gran-total{grid-column:auto;}}
   </style>
+  <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/service-worker.js').catch(()=>{});}</script>
 </head>
 <body>
 <div class="app-layout">
@@ -547,9 +552,49 @@
   <div class="modal" style="max-width:620px;max-height:95vh">
     <div class="modal-header">
       <div class="modal-titulo" id="detalleVentaTitulo">📋 Detalle</div>
-      <button class="modal-cerrar" onclick="cerrarModal('modalDetalleVenta')">✕</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-sm btn-ghost" id="btnTicketPDF" onclick="exportarTicketPDF(_detalleVentaId)" title="Descargar ticket PDF">🖨️ Ticket</button>
+        <button class="modal-cerrar" onclick="cerrarModal('modalDetalleVenta')">✕</button>
+      </div>
     </div>
     <div id="detalleVentaContenido"><div class="cargando"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Editar venta carrito ═══ -->
+<div class="modal-overlay" id="modalEditarCarrito">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <div class="modal-titulo">✏️ Editar Venta</div>
+      <button class="modal-cerrar" onclick="cerrarModal('modalEditarCarrito')">✕</button>
+    </div>
+    <input type="hidden" id="editCarritoId">
+    <div class="form-grupo">
+      <label class="form-label">Código / N° de venta</label>
+      <input type="text" class="form-input" id="editCarritoCodigo">
+      <div class="error-codigo" id="editCarritoErrCodigo">⚠ Este código ya existe.</div>
+    </div>
+    <div class="form-grupo">
+      <label class="form-label">📅 Fecha de la venta</label>
+      <input type="date" class="form-input" id="editCarritoFecha">
+    </div>
+    <div class="form-grupo">
+      <label class="form-label">Forma de pago principal</label>
+      <select class="form-select" id="editCarritoFormaPago">
+        <option value="efectivo">💵 Efectivo</option>
+        <option value="transferencia">🏦 Transferencia</option>
+        <option value="tarjeta">💳 Tarjeta</option>
+        <option value="mixto">🔀 Mixto</option>
+      </select>
+    </div>
+    <div class="form-grupo">
+      <label class="form-label">Notas</label>
+      <input type="text" class="form-input" id="editCarritoNotas" placeholder="Observaciones">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalEditarCarrito')">Cancelar</button>
+      <button class="btn btn-acento" onclick="confirmarEditarCarrito()">✓ Guardar cambios</button>
+    </div>
   </div>
 </div>
 
@@ -1387,7 +1432,7 @@ function renderTabla(lista) {
         <td onclick="event.stopPropagation()">
           <div class="tabla-acciones">
             <button class="btn btn-sm btn-ghost" onclick="abrirDetalleVenta('${v.id}')" title="Ver detalle y pagos">📋</button>
-            ${!v.es_carrito?`<button class="btn btn-sm btn-ghost" onclick="abrirEditarVenta('${v.id}')" title="Editar">✏️</button>`:''}
+            ${!v.es_carrito?`<button class="btn btn-sm btn-ghost" onclick="abrirEditarVenta('${v.id}')" title="Editar">✏️</button>`:`<button class="btn btn-sm btn-ghost" onclick="abrirEditarCarrito('${v.id}')" title="Editar">✏️</button>`}
             ${Number(v.saldo)>0?`<button class="btn btn-sm btn-secundario" onclick="abrirPago('${v.id}',${v.saldo})">💵</button>`:''}
             ${esAdmin?`<button class="btn btn-sm btn-peligro" onclick="confirmarEliminarVenta('${v.id}','${(v.articulo_nombre||'esta venta').replace(/'/g,"\\'")}')">🗑️</button>`:''}
           </div>
@@ -2138,6 +2183,175 @@ async function exportarArqueoPDF(){
 // Helpers
 function limpiarErrorCodigoVenta(){document.getElementById('ventaErrCodigo')?.classList.remove('visible');}
 function usarSugeridoVenta(){const s=document.getElementById('ventaCodigoSugerido');if(s?.dataset?.valor)document.getElementById('ventaCodigo').value=s.dataset.valor;}
+
+// ════════════════════════════════════════════════════════════
+// TICKET PDF POR VENTA
+// ════════════════════════════════════════════════════════════
+async function exportarTicketPDF(ventaId) {
+  if (!ventaId) return;
+  const v = todasVentas.find(x => x.id === ventaId);
+  if (!v) return;
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, 200] });
+    const W = 80;
+    const sanitize = t => String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\x00-\x7F]/g,'');
+    let y = 8;
+
+    const nombreEmpresa = sanitize(empresa?.nombre || 'Stockia');
+
+    // ── Encabezado ──
+    doc.setFillColor(26, 47, 107);
+    doc.rect(0, 0, W, 22, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFont('helvetica','bold'); doc.setFontSize(16);
+    doc.text('Stockia', W/2, 10, { align: 'center' });
+    doc.setFontSize(8); doc.setFont('helvetica','normal');
+    doc.text(nombreEmpresa, W/2, 16, { align: 'center' });
+    y = 28;
+
+    // ── Datos de la venta ──
+    doc.setTextColor(30,30,30);
+    doc.setFont('helvetica','bold'); doc.setFontSize(9);
+    const codigo = v.codigo_venta ? 'Venta #' + v.codigo_venta : 'Venta';
+    doc.text(codigo, W/2, y, { align: 'center' }); y += 5;
+
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+    const fecha = v.fecha_venta ? formatoFecha(v.fecha_venta + 'T12:00:00') : formatoFecha(v.created_at);
+    doc.text('Fecha: ' + sanitize(fecha), W/2, y, { align: 'center' }); y += 4;
+
+    if (v.clientes?.nombre) {
+      doc.text('Cliente: ' + sanitize(v.clientes.nombre), W/2, y, { align: 'center' }); y += 4;
+    }
+
+    // Línea separadora
+    doc.setDrawColor(200,200,200);
+    doc.line(4, y, W-4, y); y += 4;
+
+    // ── Ítems ──
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.5);
+    doc.text('ARTICULO', 4, y);
+    doc.text('CANT', 48, y, { align: 'right' });
+    doc.text('PRECIO', 62, y, { align: 'right' });
+    doc.text('SUBTOTAL', W-4, y, { align: 'right' });
+    y += 3;
+    doc.line(4, y, W-4, y); y += 4;
+
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+
+    if (v.es_carrito) {
+      // Cargar ítems del carrito
+      const { data: items } = await sb.from('venta_items')
+        .select('*').eq('venta_id', ventaId)
+        .eq('devuelto', false).order('created_at');
+      for (const it of items || []) {
+        const nombre = sanitize(it.articulo_nombre).substring(0, 28);
+        doc.text(nombre, 4, y);
+        doc.text(String(it.cantidad), 48, y, { align: 'right' });
+        doc.text(formatoPeso(it.precio_unitario), 62, y, { align: 'right' });
+        doc.text(formatoPeso(it.subtotal), W-4, y, { align: 'right' });
+        y += 5;
+        if (y > 185) { doc.addPage([80,200]); y = 10; }
+      }
+    } else {
+      const nombre = sanitize(v.articulo_nombre || '-').substring(0, 28);
+      doc.text(nombre, 4, y);
+      doc.text(String(v.cantidad || 1), 48, y, { align: 'right' });
+      doc.text(formatoPeso(v.precio_unitario), 62, y, { align: 'right' });
+      doc.text(formatoPeso(v.total), W-4, y, { align: 'right' });
+      y += 5;
+    }
+
+    // Línea separadora
+    doc.line(4, y, W-4, y); y += 4;
+
+    // ── Totales ──
+    doc.setFont('helvetica','bold'); doc.setFontSize(8);
+    doc.text('TOTAL:', 4, y);
+    doc.text(formatoPeso(v.total), W-4, y, { align: 'right' }); y += 5;
+
+    if (Number(v.pagado) > 0) {
+      doc.setFont('helvetica','normal');
+      doc.text('Pagado:', 4, y);
+      doc.text(formatoPeso(v.pagado), W-4, y, { align: 'right' }); y += 4;
+    }
+    if (Number(v.saldo) > 0) {
+      doc.setTextColor(220, 38, 38);
+      doc.setFont('helvetica','bold');
+      doc.text('Saldo pendiente:', 4, y);
+      doc.text(formatoPeso(v.saldo), W-4, y, { align: 'right' });
+      doc.setTextColor(30,30,30); y += 4;
+    }
+
+    // Forma de pago
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+    const PAGO_LABELS_PDF = { efectivo:'Efectivo', transferencia:'Transferencia', tarjeta:'Tarjeta', cuotas:'Cuotas', cuenta_corriente:'Cta. corriente', mixto:'Mixto' };
+    doc.text('Pago: ' + (PAGO_LABELS_PDF[v.forma_pago] || sanitize(v.forma_pago)), 4, y); y += 4;
+
+    if (v.es_cuotas && v.cantidad_cuotas > 1) {
+      doc.text(`Cuotas: ${v.cantidad_cuotas} x ${formatoPeso(v.total / v.cantidad_cuotas)}`, 4, y); y += 4;
+    }
+
+    if (v.notas) {
+      doc.text('Nota: ' + sanitize(v.notas).substring(0, 40), 4, y); y += 4;
+    }
+
+    // Línea final
+    doc.line(4, y, W-4, y); y += 5;
+    doc.setFont('helvetica','italic'); doc.setFontSize(7);
+    doc.setTextColor(120,120,120);
+    doc.text('Gracias por su compra!', W/2, y, { align: 'center' }); y += 4;
+    doc.text('Stockia - Sistema de gestion', W/2, y, { align: 'center' });
+
+    const nombreArchivo = `ticket-${v.codigo_venta || ventaId.substring(0,8)}.pdf`;
+    doc.save(nombreArchivo);
+    mostrarAlerta('Ticket generado ✓', 'exito');
+  } catch(err) {
+    mostrarAlerta('Error al generar ticket: ' + err.message, 'error');
+    console.error(err);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// EDITAR VENTA CARRITO
+// ════════════════════════════════════════════════════════════
+function abrirEditarCarrito(ventaId) {
+  const v = todasVentas.find(x => x.id === ventaId);
+  if (!v) return;
+  document.getElementById('editCarritoId').value    = ventaId;
+  document.getElementById('editCarritoCodigo').value = v.codigo_venta || '';
+  document.getElementById('editCarritoFecha').value  = v.fecha_venta ? v.fecha_venta : hoyISO();
+  document.getElementById('editCarritoFormaPago').value = v.forma_pago || 'efectivo';
+  document.getElementById('editCarritoNotas').value  = v.notas || '';
+  document.getElementById('editCarritoErrCodigo').classList.remove('visible');
+  abrirModal('modalEditarCarrito');
+}
+
+async function confirmarEditarCarrito() {
+  const ventaId = document.getElementById('editCarritoId').value;
+  const codigo  = document.getElementById('editCarritoCodigo').value.trim() || null;
+  const fecha   = document.getElementById('editCarritoFecha').value || hoyISO();
+  const fp      = document.getElementById('editCarritoFormaPago').value;
+  const notas   = document.getElementById('editCarritoNotas').value.trim() || null;
+
+  if (codigo) {
+    const unico = await codigoEsUnico('ventas','codigo_venta', codigo, empresaId, ventaId);
+    if (!unico) { document.getElementById('editCarritoErrCodigo').classList.add('visible'); return; }
+  }
+
+  const { error } = await sb.from('ventas').update({
+    codigo_venta: codigo,
+    fecha_venta:  fecha,
+    forma_pago:   fp,
+    notas,
+  }).eq('id', ventaId);
+
+  if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
+  mostrarAlerta('Venta actualizada ✓', 'exito');
+  cerrarModal('modalEditarCarrito');
+  await cargarVentas();
+}
 </script>
 </body>
 </html>
