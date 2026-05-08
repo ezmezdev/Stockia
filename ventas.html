@@ -853,20 +853,26 @@ async function abrirVentaIndividual() {
   document.getElementById('ventaId').value='';
   document.getElementById('ventaFecha').value=hoyISO();
   document.getElementById('ventaArticulo').value='';
-  document.getElementById('ventaCliente').value='';
+  const cli = document.getElementById('ventaCliente');
+  if (cli) cli.value='';
   document.getElementById('ventaCantidad').value='1';
   document.getElementById('ventaPrecio').value='';
   document.getElementById('ventaFormaPago').value='efectivo';
   document.getElementById('ventaCuotas').value='1';
   document.getElementById('ventaRecargo').value='0';
-  document.getElementById('ventaDiaVenc').value='10';
-  document.getElementById('ventaMoraPct').value='0';
-  document.getElementById('ventaGastosAdminPct').value='0';
+  const dv = document.getElementById('ventaDiaVenc');
+  if (dv) dv.value='10';
+  const mp = document.getElementById('ventaMoraPct');
+  if (mp) mp.value='0';
+  const ga = document.getElementById('ventaGastosAdminPct');
+  if (ga) ga.value='0';
   document.getElementById('ventaPagado').value='0';
   document.getElementById('ventaNotas').value='';
   document.getElementById('ventaCodigo').value='';
-  document.getElementById('seccionCuotasIndividual').style.display='none';
-  document.getElementById('seccionCuotas').style.display='none';
+  const sci = document.getElementById('seccionCuotasIndividual');
+  if (sci) sci.style.display='none';
+  const sc = document.getElementById('seccionCuotas');
+  if (sc) sc.style.display='none';
   document.getElementById('modalVentaTitulo').textContent='➕ Nueva Venta';
   limpiarErrorCodigoVenta();
   const sig = await siguienteCodigo('venta', empresaId);
@@ -2515,7 +2521,22 @@ function cerrarEscaner() {
 }
 
 // ════════════════════════════════════════════════════════════
-// TICKET PDF POR VENTA
+// HELPERS
+// ════════════════════════════════════════════════════════════
+function limpiarErrorCodigoVenta() {
+  document.getElementById('ventaErrCodigo')?.classList.remove('visible');
+}
+function usarSugeridoVenta() {
+  const s = document.getElementById('ventaCodigoSugerido');
+  if (s?.dataset?.valor) document.getElementById('ventaCodigo').value = s.dataset.valor;
+}
+function limpiarErrCarrCodigo() {
+  document.getElementById('carrErrCodigo')?.classList.remove('visible');
+}
+function usarSugeridoCarrito() {
+  const s = document.getElementById('carrCodigoSugerido');
+  if (s?.dataset?.valor) document.getElementById('carrCodigo').value = s.dataset.valor;
+}
 // ════════════════════════════════════════════════════════════
 async function exportarTicketPDF(ventaId) {
   if (!ventaId) return;
