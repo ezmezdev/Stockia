@@ -54,6 +54,10 @@
       from { opacity:0; transform:translateY(-6px); }
       to   { opacity:1; transform:translateY(0); }
     }
+    @keyframes scanLine {
+      0%,100% { top:25%; }
+      50%      { top:75%; }
+    }
     .detalle-items-tabla { width:100%; border-collapse:collapse; font-size:12px; }
     .detalle-items-tabla th {
       font-size:10px; font-weight:700; color:var(--texto-suave);
@@ -204,6 +208,7 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <button class="btn-resumen" id="btnResumen" style="display:none" onclick="togglePanel('resumen')">📊 Resumen</button>
         <button class="btn-arqueo"  id="btnArqueo"  style="display:none" onclick="togglePanel('arqueo')">🏦 Arqueo</button>
+        <button class="btn btn-sm" id="btnCuotas" style="display:none;background:#7c3aed;color:#fff;border:none;border-radius:var(--r-md);padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer" onclick="togglePanel('cuotas')">📅 Cuotas</button>
         <!-- Botones de nueva venta — se muestran según modo_ventas configurado -->
         <button class="btn btn-secundario" id="btnNuevaVentaIndividual" style="display:none" onclick="abrirVentaIndividual()">📦 Venta individual</button>
         <button class="btn btn-acento"     id="btnNuevaVentaCarrito"    style="display:none" onclick="abrirCarrito()">🛒 Ticket / Carrito</button>
@@ -278,7 +283,14 @@
       </div>
     </div>
 
-    <!-- Filtros -->
+    <!-- ═══ PANEL CUOTAS PENDIENTES ═══ -->
+    <div class="panel-flotante" id="panelCuotas" style="border-color:#7c3aed">
+      <div class="panel-header">
+        <div class="panel-titulo">📅 Cuotas pendientes</div>
+        <button class="panel-cerrar" onclick="togglePanel('cuotas')">✕</button>
+      </div>
+      <div id="cuotasContenido"><div class="cargando"><div class="spinner"></div></div></div>
+    </div>
     <div class="card mb-24">
       <div class="filtros-bar">
         <div class="buscador-contenedor" style="margin:0;flex:1;min-width:180px">
@@ -342,6 +354,32 @@
     </div>
   </main>
   <footer class="app-footer">© <span class="anio-actual"></span> Stockia.</footer>
+</div>
+
+<!-- ═══ MODAL: Escáner código de barras ═══ -->
+<div class="modal-overlay" id="modalEscaner" style="z-index:1200">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <div class="modal-titulo">📷 Escanear código de barras</div>
+      <button class="modal-cerrar" onclick="cerrarEscaner()">✕</button>
+    </div>
+    <div style="text-align:center;margin-bottom:12px;font-size:13px;color:var(--texto-suave)">
+      Apuntá la cámara al código de barras del producto
+    </div>
+    <div style="position:relative;border-radius:var(--r-md);overflow:hidden;background:#000;aspect-ratio:4/3">
+      <video id="escanerVideo" style="width:100%;height:100%;object-fit:cover" playsinline autoplay muted></video>
+      <!-- Línea de escaneo animada -->
+      <div style="position:absolute;left:10%;right:10%;height:2px;background:rgba(16,185,129,.8);
+        box-shadow:0 0 8px rgba(16,185,129,.8);animation:scanLine 2s ease-in-out infinite;top:50%"></div>
+      <!-- Marco -->
+      <div style="position:absolute;inset:20%;border:2px solid rgba(255,255,255,.4);border-radius:8px;pointer-events:none"></div>
+    </div>
+    <div id="escanerResultado" style="margin-top:12px;text-align:center;font-size:13px;color:var(--texto-suave);min-height:20px"></div>
+    <div id="escanerNoEncontrado" style="display:none;margin-top:10px;padding:10px;background:#fef2f2;border-radius:var(--r-md);font-size:13px;color:var(--rojo);text-align:center"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarEscaner()">Cancelar</button>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ MODAL: Nueva Venta — MAYORISTA (individual) ═══ -->
@@ -501,6 +539,7 @@
         placeholder="Escribí para buscar artículo..."
         oninput="filtrarArticulosCarrito()"
         autocomplete="off">
+      <button class="btn btn-sm btn-ghost" onclick="abrirEscaner()" title="Escanear código de barras" style="white-space:nowrap;flex-shrink:0">📷 Escanear</button>
     </div>
     <!-- Resultados de búsqueda -->
     <div id="carrResultados" style="display:none;max-height:150px;overflow-y:auto;border:1px solid var(--borde);border-radius:var(--r-md);margin-bottom:12px;background:#fff;"></div>
@@ -560,6 +599,7 @@
       <div class="modal-titulo" id="detalleVentaTitulo">📋 Detalle</div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-sm btn-ghost" id="btnTicketPDF" onclick="exportarTicketPDF(_detalleVentaId)" title="Descargar ticket PDF">🖨️ Ticket</button>
+        <button class="btn btn-sm" style="background:#25d366;color:#fff;border:none" onclick="compartirTicketWhatsApp(_detalleVentaId)" title="Compartir por WhatsApp">📲 WhatsApp</button>
         <button class="modal-cerrar" onclick="cerrarModal('modalDetalleVenta')">✕</button>
       </div>
     </div>
@@ -772,6 +812,9 @@ function fechaParaInput(f) { if(!f)return hoyISO(); return new Date(f).toISOStri
   }
   if (_configFunciones.arqueo_turnos === 'turno')
     document.getElementById('grupoTurno').style.display = 'block';
+
+  // Mostrar panel cuotas solo para modo individual o ambos
+  if (usaIndividual) document.getElementById('btnCuotas').style.display = 'inline-flex';
 
   await Promise.all([cargarArticulosSelect(), tieneClientes ? cargarClientesSelect() : Promise.resolve()]);
   await cargarVentas();
@@ -1848,12 +1891,21 @@ let _panelActivo=null;
 function togglePanel(panel){
   const pr=document.getElementById('panelResumen');
   const pa=document.getElementById('panelArqueo');
-  if(_panelActivo===panel){pr.classList.remove('activo');pa.classList.remove('activo');_panelActivo=null;return;}
+  const pc=document.getElementById('panelCuotas');
+  if(_panelActivo===panel){
+    pr.classList.remove('activo');
+    pa.classList.remove('activo');
+    pc?.classList.remove('activo');
+    _panelActivo=null;
+    return;
+  }
   _panelActivo=panel;
   pr.classList.toggle('activo',panel==='resumen');
   pa.classList.toggle('activo',panel==='arqueo');
+  if(pc) pc.classList.toggle('activo',panel==='cuotas');
   if(panel==='resumen') calcularResumen();
   if(panel==='arqueo')  cargarDatosArqueo();
+  if(panel==='cuotas')  cargarCuotasPendientes();
 }
 
 function selPeriodo(periodo,btn){
@@ -2203,9 +2255,264 @@ async function exportarArqueoPDF(){
   mostrarAlerta('PDF generado ✓','exito');
 }
 
-// Helpers
-function limpiarErrorCodigoVenta(){document.getElementById('ventaErrCodigo')?.classList.remove('visible');}
-function usarSugeridoVenta(){const s=document.getElementById('ventaCodigoSugerido');if(s?.dataset?.valor)document.getElementById('ventaCodigo').value=s.dataset.valor;}
+// ════════════════════════════════════════════════════════════
+// COMPARTIR TICKET POR WHATSAPP
+// ════════════════════════════════════════════════════════════
+async function compartirTicketWhatsApp(ventaId) {
+  if (!ventaId) return;
+  const v = todasVentas.find(x => x.id === ventaId);
+  if (!v) return;
+
+  const nombreEmpresa = empresa?.nombre || 'Stockia';
+  const codigo  = v.codigo_venta ? `#${v.codigo_venta}` : '';
+  const fecha   = v.fecha_venta ? formatoFecha(v.fecha_venta+'T12:00:00') : formatoFecha(v.created_at);
+  const cliente = v.clientes?.nombre || 'Consumidor final';
+  const PAGO_LABEL_WA = { efectivo:'Efectivo', transferencia:'Transferencia', tarjeta:'Tarjeta', cuotas:'Cuotas', cuenta_corriente:'Cta. corriente', mixto:'Mixto' };
+  const fp = PAGO_LABEL_WA[v.forma_pago] || v.forma_pago;
+
+  let lineas = [];
+  lineas.push(`🏪 *${nombreEmpresa}*`);
+  lineas.push(`📋 *Comprobante de venta ${codigo}*`);
+  lineas.push(`📅 Fecha: ${fecha}`);
+  lineas.push(`👤 Cliente: ${cliente}`);
+  lineas.push('─────────────────');
+
+  if (v.es_carrito) {
+    const { data: items } = await sb.from('venta_items')
+      .select('*').eq('venta_id', ventaId).eq('devuelto', false).order('created_at');
+    for (const it of items || []) {
+      lineas.push(`• ${it.articulo_nombre} x${it.cantidad} → ${formatoPeso(it.subtotal)}`);
+      if (it.es_cuotas && it.cantidad_cuotas > 1) {
+        const cuotaVal = it.subtotal / it.cantidad_cuotas;
+        lineas.push(`  📅 ${it.cantidad_cuotas} cuotas de ${formatoPeso(cuotaVal)}`);
+      }
+    }
+  } else {
+    lineas.push(`• ${v.articulo_nombre}${v.cantidad > 1 ? ' x'+v.cantidad : ''} → ${formatoPeso(v.total)}`);
+    if (v.es_cuotas && v.cantidad_cuotas > 1) {
+      const cuotaVal = v.total / v.cantidad_cuotas;
+      lineas.push(`  📅 ${v.cantidad_cuotas} cuotas de ${formatoPeso(cuotaVal)}`);
+    }
+  }
+
+  lineas.push('─────────────────');
+  lineas.push(`💰 *Total: ${formatoPeso(v.total)}*`);
+  lineas.push(`💳 Forma de pago: ${fp}`);
+  if (Number(v.saldo) > 0) lineas.push(`⚠️ Saldo pendiente: ${formatoPeso(v.saldo)}`);
+  if (v.notas) lineas.push(`📝 Nota: ${v.notas}`);
+  lineas.push('─────────────────');
+  lineas.push('_Generado con Stockia_');
+
+  const texto = encodeURIComponent(lineas.join('\n'));
+  window.open(`https://wa.me/?text=${texto}`, '_blank');
+}
+
+// ════════════════════════════════════════════════════════════
+// PANEL CUOTAS PENDIENTES
+// ════════════════════════════════════════════════════════════
+async function cargarCuotasPendientes() {
+  document.getElementById('cuotasContenido').innerHTML = '<div class="cargando"><div class="spinner"></div></div>';
+
+  // Traer ventas en cuotas con saldo > 0
+  const { data: ventas } = await sb.from('ventas')
+    .select('*,clientes(nombre)')
+    .eq('empresa_id', empresaId)
+    .eq('es_cuotas', true)
+    .gt('saldo', 0)
+    .order('fecha_venta', { ascending: true });
+
+  const lista = ventas || [];
+
+  if (!lista.length) {
+    document.getElementById('cuotasContenido').innerHTML = `
+      <div class="estado-vacio" style="padding:24px 0">
+        <div class="estado-vacio-icono">✅</div>
+        <div class="estado-vacio-titulo">Sin cuotas pendientes</div>
+      </div>`;
+    return;
+  }
+
+  const hoy = new Date();
+  hoy.setHours(0,0,0,0);
+
+  const filas = lista.map(v => {
+    const cuotas   = v.cantidad_cuotas || 1;
+    const cuotaVal = cuotas > 0 ? v.total / cuotas : v.total;
+    const moraPct  = v.mora_pct || 0;
+
+    // Calcular próximo vencimiento
+    let diasAtraso = 0;
+    let vencLabel  = '—';
+    let atrasoClass = '';
+
+    if (v.fecha_venta) {
+      const fechaBase = new Date(v.fecha_venta + 'T12:00:00');
+      // El día de vencimiento se guarda en recargo_pct como placeholder
+      // Por ahora usamos 30 días desde la venta como referencia
+      const venc = new Date(fechaBase);
+      venc.setMonth(venc.getMonth() + 1);
+      const diff = Math.floor((hoy - venc) / (1000*60*60*24));
+      if (diff > 0) {
+        diasAtraso = diff;
+        atrasoClass = 'texto-rojo';
+        vencLabel = `⚠️ ${diff} día${diff!==1?'s':''} de atraso`;
+      } else if (diff === 0) {
+        atrasoClass = 'texto-naranja';
+        vencLabel = '⏰ Vence hoy';
+      } else {
+        vencLabel = `${Math.abs(diff)} día${Math.abs(diff)!==1?'s':''} restantes`;
+      }
+    }
+
+    const cuotaTarde = moraPct > 0 ? cuotaVal + cuotaVal*(moraPct/100) : 0;
+
+    return `
+      <div style="padding:12px;background:var(--bg);border-radius:var(--r-md);border:1px solid var(--borde);margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
+          <div>
+            <div class="fw-600" style="font-size:13px">${v.clientes?.nombre || 'Consumidor final'}</div>
+            <div style="font-size:12px;color:var(--texto-suave)">${v.articulo_nombre||'-'} ${v.codigo_venta?'· #'+v.codigo_venta:''}</div>
+            <div style="font-size:11px;margin-top:4px" class="${atrasoClass}">${vencLabel}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div class="fw-600" style="color:var(--azul-accion)">${formatoPeso(cuotaVal)}/cuota</div>
+            <div style="font-size:11px;color:var(--texto-suave)">${cuotas} cuotas · Saldo: ${formatoPeso(v.saldo)}</div>
+            ${cuotaTarde>0?`<div style="font-size:11px;color:var(--rojo)">Con mora: ${formatoPeso(cuotaTarde)}</div>`:''}
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:10px">
+          <button class="btn btn-sm btn-secundario" onclick="abrirPago('${v.id}',${v.saldo})">💵 Registrar pago</button>
+          <button class="btn btn-sm btn-ghost" onclick="abrirDetalleVenta('${v.id}');togglePanel('cuotas')">📋 Ver detalle</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  const totalSaldo = lista.reduce((s,v)=>s+Number(v.saldo||0),0);
+  const enAtraso   = lista.filter(v => {
+    if (!v.fecha_venta) return false;
+    const venc = new Date(v.fecha_venta + 'T12:00:00');
+    venc.setMonth(venc.getMonth() + 1);
+    return hoy > venc;
+  }).length;
+
+  document.getElementById('cuotasContenido').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
+      <div style="background:var(--bg);border-radius:var(--r-md);padding:12px;border-left:4px solid var(--azul-accion);text-align:center">
+        <div class="fw-600" style="font-size:18px;color:var(--azul-accion)">${lista.length}</div>
+        <div style="font-size:11px;color:var(--texto-suave)">Con cuotas</div>
+      </div>
+      <div style="background:var(--bg);border-radius:var(--r-md);padding:12px;border-left:4px solid var(--rojo);text-align:center">
+        <div class="fw-600" style="font-size:18px;color:var(--rojo)">${enAtraso}</div>
+        <div style="font-size:11px;color:var(--texto-suave)">En atraso</div>
+      </div>
+      <div style="background:var(--bg);border-radius:var(--r-md);padding:12px;border-left:4px solid var(--verde);text-align:center">
+        <div class="fw-600" style="font-size:15px;color:var(--verde)">${formatoPeso(totalSaldo)}</div>
+        <div style="font-size:11px;color:var(--texto-suave)">Saldo total</div>
+      </div>
+    </div>
+    ${filas}
+  `;
+}
+
+// ════════════════════════════════════════════════════════════
+// ESCÁNER CÓDIGO DE BARRAS (ZXing)
+// ════════════════════════════════════════════════════════════
+let _escanerActivo = false;
+let _escanerReader = null;
+
+async function abrirEscaner() {
+  document.getElementById('escanerResultado').textContent = 'Iniciando cámara...';
+  document.getElementById('escanerNoEncontrado').style.display = 'none';
+  abrirModal('modalEscaner');
+
+  try {
+    // Cargar ZXing dinámicamente si no está cargado
+    if (!window.ZXing) {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }
+
+    const codeReader = new ZXing.BrowserMultiFormatReader();
+    _escanerReader = codeReader;
+    _escanerActivo = true;
+
+    const videoEl = document.getElementById('escanerVideo');
+    document.getElementById('escanerResultado').textContent = 'Apuntá al código de barras...';
+
+    await codeReader.decodeFromVideoDevice(null, videoEl, (result, err) => {
+      if (!_escanerActivo) return;
+      if (result) {
+        const codigo = result.getText();
+        manejarCodigoEscaneado(codigo);
+      }
+    });
+  } catch(err) {
+    document.getElementById('escanerResultado').textContent = '⚠️ No se pudo acceder a la cámara. Verificá los permisos.';
+  }
+}
+
+async function manejarCodigoEscaneado(codigo) {
+  _escanerActivo = false;
+  document.getElementById('escanerResultado').textContent = `✓ Código detectado: ${codigo}`;
+
+  // Buscar artículo por código en el catálogo
+  const art = articulos.find(a =>
+    (a.codigo || '').toLowerCase() === codigo.toLowerCase() ||
+    (a.nombre || '').toLowerCase() === codigo.toLowerCase()
+  );
+
+  if (art) {
+    cerrarEscaner();
+    agregarAlCarrito(art.id);
+    mostrarAlerta(`"${art.nombre}" agregado ✓`, 'exito');
+  } else {
+    // Buscar en Supabase por código
+    const { data } = await sb.from('articulos')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .eq('activo', true)
+      .ilike('codigo', codigo)
+      .limit(1);
+
+    if (data?.length) {
+      // Actualizar cache local
+      if (!articulos.find(a => a.id === data[0].id)) articulos.push(data[0]);
+      cerrarEscaner();
+      agregarAlCarrito(data[0].id);
+      mostrarAlerta(`"${data[0].nombre}" agregado ✓`, 'exito');
+    } else {
+      const noEnc = document.getElementById('escanerNoEncontrado');
+      noEnc.textContent = `No se encontró ningún artículo con el código "${codigo}". Verificá que esté cargado en el sistema.`;
+      noEnc.style.display = 'block';
+      // Reactivar escáner después de 2 segundos
+      setTimeout(() => {
+        if (document.getElementById('modalEscaner').classList.contains('activo')) {
+          _escanerActivo = true;
+          noEnc.style.display = 'none';
+          document.getElementById('escanerResultado').textContent = 'Apuntá al código de barras...';
+        }
+      }, 2500);
+    }
+  }
+}
+
+function cerrarEscaner() {
+  _escanerActivo = false;
+  if (_escanerReader) {
+    try { _escanerReader.reset(); } catch(e) {}
+    _escanerReader = null;
+  }
+  const video = document.getElementById('escanerVideo');
+  if (video?.srcObject) {
+    video.srcObject.getTracks().forEach(t => t.stop());
+    video.srcObject = null;
+  }
+  cerrarModal('modalEscaner');
+}
 
 // ════════════════════════════════════════════════════════════
 // TICKET PDF POR VENTA
