@@ -61,6 +61,9 @@
         <button class="btn btn-acento btn-lg" onclick="abrirModalNuevo()">
           ➕ <span id="btnAgregarLabel">Agregar artículo</span>
         </button>
+        <button class="btn btn-sm" style="background:#7c3aed;color:#fff;border:none;border-radius:var(--r-md);padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer" onclick="abrirRecepcionStock()">
+          📷 Recepción de stock
+        </button>
       </div>
 
       <!-- Filtros -->
@@ -106,6 +109,104 @@
     </main>
 
     <footer class="app-footer">© <span class="anio-actual"></span> Stockia.</footer>
+  </div>
+
+  <!-- MODAL: Recepción de stock con escáner -->
+  <div class="modal-overlay" id="modalRecepcion">
+    <div class="modal" style="max-width:500px">
+      <div class="modal-header">
+        <div class="modal-titulo">📷 Recepción de stock</div>
+        <button class="modal-cerrar" onclick="cerrarRecepcion()">✕</button>
+      </div>
+
+      <!-- PASO 1: Cámara -->
+      <div id="recepPasoEscaner">
+        <div style="text-align:center;margin-bottom:10px;font-size:13px;color:var(--texto-suave)">
+          Apuntá la cámara al código de barras del producto
+        </div>
+        <div style="position:relative;border-radius:var(--r-md);overflow:hidden;background:#000;aspect-ratio:4/3">
+          <video id="recepVideo" style="width:100%;height:100%;object-fit:cover" playsinline autoplay muted></video>
+          <div style="position:absolute;left:10%;right:10%;height:2px;background:rgba(16,185,129,.8);box-shadow:0 0 8px rgba(16,185,129,.8);animation:scanLine 2s ease-in-out infinite;top:50%"></div>
+          <div style="position:absolute;inset:20%;border:2px solid rgba(255,255,255,.4);border-radius:8px;pointer-events:none"></div>
+        </div>
+        <div id="recepEscanerMsg" style="text-align:center;margin-top:10px;font-size:13px;color:var(--texto-suave)">Iniciando cámara...</div>
+        <div style="text-align:center;margin-top:12px">
+          <button class="btn btn-ghost btn-sm" onclick="cerrarRecepcion()">Cancelar</button>
+        </div>
+      </div>
+
+      <!-- PASO 2A: Artículo encontrado → solo pedir cantidad -->
+      <div id="recepPasoEncontrado" style="display:none">
+        <div class="recep-art-card">
+          <div class="recep-art-nombre" id="recepArtNombre"></div>
+          <div class="recep-art-info">
+            Código: <b id="recepArtCodigo"></b> &nbsp;·&nbsp;
+            Stock actual: <b id="recepArtStockActual"></b> unidades &nbsp;·&nbsp;
+            Precio: <b id="recepArtPrecio"></b>
+          </div>
+        </div>
+        <div class="form-grupo">
+          <label class="form-label">Cantidad recibida</label>
+          <input type="number" class="form-input" id="recepCantidad" value="1" min="1"
+            style="font-size:24px;font-weight:800;text-align:center"
+            onkeydown="if(event.key==='Enter') confirmarRecepcionStock()">
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="volverEscaner()">← Volver a escanear</button>
+          <button class="btn btn-acento" onclick="confirmarRecepcionStock()">✓ Sumar al stock</button>
+        </div>
+      </div>
+
+      <!-- PASO 2B: Artículo NO encontrado → formulario completo -->
+      <div id="recepPasoNuevo" style="display:none">
+        <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:var(--r-md);padding:10px 14px;font-size:13px;color:#92400e;margin-bottom:16px">
+          ⚠️ Código <b id="recepCodigoNoEncontrado"></b> no está registrado. Completá los datos para crearlo.
+        </div>
+        <input type="hidden" id="recepNuevoCodigo">
+        <div class="form-grupo">
+          <label class="form-label">Nombre del artículo *</label>
+          <input type="text" class="form-input" id="recepNuevoNombre" placeholder="Ej: Coca Cola 500ml">
+        </div>
+        <div class="form-fila">
+          <div class="form-grupo">
+            <label class="form-label">Precio de venta *</label>
+            <input type="number" class="form-input" id="recepNuevoPrecio" value="0" min="0" step="0.01">
+          </div>
+          <div class="form-grupo">
+            <label class="form-label">Cantidad inicial (stock)</label>
+            <input type="number" class="form-input" id="recepNuevoStock" value="1" min="0">
+          </div>
+        </div>
+        <div class="form-fila">
+          <div class="form-grupo">
+            <label class="form-label">Categoría</label>
+            <input type="text" class="form-input" id="recepNuevoCategoria" placeholder="Opcional">
+          </div>
+          <div class="form-grupo">
+            <label class="form-label">Stock mínimo</label>
+            <input type="number" class="form-input" id="recepNuevoStockMin" value="0" min="0">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="volverEscaner()">← Volver a escanear</button>
+          <button class="btn btn-acento" onclick="guardarNuevoArticuloRecepcion()">✓ Crear y guardar</button>
+        </div>
+      </div>
+
+      <!-- PASO 3: Éxito -->
+      <div id="recepPasoExito" style="display:none">
+        <div class="recep-success">
+          <div style="font-size:52px;margin-bottom:8px">✅</div>
+          <div style="font-size:17px;font-weight:800;color:#065f46" id="recepExitoTitulo"></div>
+          <div style="font-size:13px;color:#047857;margin-top:6px" id="recepExitoSub"></div>
+        </div>
+        <div class="modal-footer" style="margin-top:16px">
+          <button class="btn btn-ghost" onclick="cerrarRecepcion()">Terminar</button>
+          <button class="btn btn-acento" onclick="volverEscaner()">📷 Escanear otro</button>
+        </div>
+      </div>
+
+    </div>
   </div>
 
   <!-- MODAL: Nuevo / Editar artículo -->
@@ -181,6 +282,17 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/global.js?v=4.0"></script>
+  <style>
+    @keyframes scanLine { 0%,100%{top:25%} 50%{top:75%} }
+    .recep-estado { text-align:center; padding:20px 0; }
+    .recep-estado .icono { font-size:48px; margin-bottom:8px; }
+    .recep-estado .titulo { font-size:16px; font-weight:700; color:var(--texto); }
+    .recep-estado .sub { font-size:13px; color:var(--texto-suave); margin-top:4px; }
+    .recep-art-card { background:var(--bg); border-radius:var(--r-md); padding:16px; border:2px solid var(--verde); margin-bottom:16px; }
+    .recep-art-nombre { font-size:16px; font-weight:700; color:var(--texto); margin-bottom:4px; }
+    .recep-art-info { font-size:12px; color:var(--texto-suave); }
+    .recep-success { background:#ecfdf5; border:2px solid var(--verde); border-radius:var(--r-md); padding:20px; text-align:center; }
+  </style>
   <script>
     let empresaId  = null;
     let empresa    = null;
@@ -367,6 +479,167 @@
       mostrarAlerta('Artículo eliminado', 'info');
       cerrarModal('modalEliminar');
       cargarArticulos();
+    }
+
+    // ════════════════════════════════════════════════════════
+    // RECEPCIÓN DE STOCK CON ESCÁNER
+    // ════════════════════════════════════════════════════════
+    let _recepReader  = null;
+    let _recepActivo  = false;
+    let _recepArtId   = null;
+
+    function mostrarPasoRecep(paso) {
+      ['recepPasoEscaner','recepPasoEncontrado','recepPasoNuevo','recepPasoExito']
+        .forEach(id => document.getElementById(id).style.display = 'none');
+      document.getElementById(paso).style.display = 'block';
+    }
+
+    async function abrirRecepcionStock() {
+      _recepArtId = null;
+      mostrarPasoRecep('recepPasoEscaner');
+      abrirModal('modalRecepcion');
+      await iniciarCamaraRecep();
+    }
+
+    async function iniciarCamaraRecep() {
+      document.getElementById('recepEscanerMsg').textContent = 'Iniciando cámara...';
+      _recepActivo = true;
+      try {
+        if (!window.ZXing) {
+          await new Promise((res, rej) => {
+            const s = document.createElement('script');
+            s.src = 'https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js';
+            s.onload = res; s.onerror = rej;
+            document.head.appendChild(s);
+          });
+        }
+        const codeReader = new ZXing.BrowserMultiFormatReader();
+        _recepReader = codeReader;
+        const video = document.getElementById('recepVideo');
+        document.getElementById('recepEscanerMsg').textContent = 'Apuntá al código de barras...';
+        await codeReader.decodeFromVideoDevice(null, video, (result, err) => {
+          if (!_recepActivo) return;
+          if (result) procesarCodigoRecep(result.getText());
+        });
+      } catch(err) {
+        document.getElementById('recepEscanerMsg').textContent = '⚠️ No se pudo acceder a la cámara. Verificá los permisos.';
+      }
+    }
+
+    function detenerCamaraRecep() {
+      _recepActivo = false;
+      if (_recepReader) { try { _recepReader.reset(); } catch(e) {} _recepReader = null; }
+      const video = document.getElementById('recepVideo');
+      if (video?.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
+    }
+
+    async function procesarCodigoRecep(codigo) {
+      _recepActivo = false;
+      detenerCamaraRecep();
+
+      // Buscar en cache local primero
+      let art = todosLosArticulos.find(a =>
+        (a.codigo||'').toLowerCase() === codigo.toLowerCase()
+      );
+
+      // Si no está en cache, buscar en Supabase
+      if (!art) {
+        const { data } = await sb.from('articulos').select('*')
+          .eq('empresa_id', empresaId).eq('activo', true)
+          .ilike('codigo', codigo).limit(1);
+        if (data?.length) {
+          art = data[0];
+          if (!todosLosArticulos.find(a => a.id === art.id)) todosLosArticulos.push(art);
+        }
+      }
+
+      if (art) {
+        // ── Artículo encontrado ──
+        _recepArtId = art.id;
+        document.getElementById('recepArtNombre').textContent      = art.nombre;
+        document.getElementById('recepArtCodigo').textContent      = art.codigo || codigo;
+        document.getElementById('recepArtStockActual').textContent = art.stock || 0;
+        document.getElementById('recepArtPrecio').textContent      = formatoPeso(art.precio);
+        document.getElementById('recepCantidad').value             = '1';
+        mostrarPasoRecep('recepPasoEncontrado');
+        setTimeout(() => document.getElementById('recepCantidad').focus(), 100);
+      } else {
+        // ── Artículo NO encontrado → mostrar formulario ──
+        document.getElementById('recepNuevoCodigo').value          = codigo;
+        document.getElementById('recepCodigoNoEncontrado').textContent = codigo;
+        document.getElementById('recepNuevoNombre').value          = '';
+        document.getElementById('recepNuevoPrecio').value          = '0';
+        document.getElementById('recepNuevoStock').value           = '1';
+        document.getElementById('recepNuevoCategoria').value       = '';
+        document.getElementById('recepNuevoStockMin').value        = '0';
+        mostrarPasoRecep('recepPasoNuevo');
+        setTimeout(() => document.getElementById('recepNuevoNombre').focus(), 100);
+      }
+    }
+
+    async function confirmarRecepcionStock() {
+      if (!_recepArtId) return;
+      const cantidad = parseInt(document.getElementById('recepCantidad').value) || 1;
+      if (cantidad <= 0) { mostrarAlerta('Ingresá una cantidad válida', 'error'); return; }
+
+      const art = todosLosArticulos.find(a => a.id === _recepArtId);
+      const stockNuevo = (art?.stock || 0) + cantidad;
+
+      const { error } = await sb.from('articulos')
+        .update({ stock: stockNuevo })
+        .eq('id', _recepArtId);
+
+      if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
+
+      // Actualizar cache local
+      if (art) art.stock = stockNuevo;
+
+      document.getElementById('recepExitoTitulo').textContent = `✓ Stock actualizado`;
+      document.getElementById('recepExitoSub').textContent =
+        `${art?.nombre || 'Artículo'} · ${art?.stock - cantidad} → ${stockNuevo} unidades (+${cantidad})`;
+      mostrarPasoRecep('recepPasoExito');
+      cargarArticulos();
+    }
+
+    async function guardarNuevoArticuloRecepcion() {
+      const nombre   = document.getElementById('recepNuevoNombre').value.trim();
+      const precio   = parseFloat(document.getElementById('recepNuevoPrecio').value) || 0;
+      const stock    = parseInt(document.getElementById('recepNuevoStock').value) || 0;
+      const categoria= document.getElementById('recepNuevoCategoria').value.trim() || null;
+      const stockMin = parseInt(document.getElementById('recepNuevoStockMin').value) || 0;
+      const codigo   = document.getElementById('recepNuevoCodigo').value.trim() || null;
+
+      if (!nombre) { mostrarAlerta('El nombre es obligatorio', 'error'); return; }
+
+      const { data, error } = await sb.from('articulos').insert({
+        empresa_id:   empresaId,
+        nombre, precio, stock,
+        stock_minimo: stockMin,
+        categoria,
+        codigo,
+        activo: true,
+      }).select().single();
+
+      if (error) { mostrarAlerta('Error: ' + error.message, 'error'); return; }
+
+      if (data) todosLosArticulos.push(data);
+
+      document.getElementById('recepExitoTitulo').textContent = '✓ Artículo creado';
+      document.getElementById('recepExitoSub').textContent =
+        `${nombre} · Stock inicial: ${stock} unidades · Precio: ${formatoPeso(precio)}`;
+      mostrarPasoRecep('recepPasoExito');
+      cargarArticulos();
+    }
+
+    async function volverEscaner() {
+      _recepArtId = null;
+      mostrarPasoRecep('recepPasoEscaner');
+      await iniciarCamaraRecep();
+    }
+
+    function cerrarRecepcion() {
+      detenerCamaraRecep();
+      cerrarModal('modalRecepcion');
     }
   </script>
 </body>
