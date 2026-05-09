@@ -2421,54 +2421,97 @@ async function cargarCuotasPendientes() {
 }
 
 // ════════════════════════════════════════════════════════════
-// ESCÁNER CÓDIGO DE BARRAS (ZXing)
+// ESCÁNER CÓDIGO DE BARRAS (Quagga2 — rápido para móvil)
 // ════════════════════════════════════════════════════════════
 let _escanerActivo = false;
-let _escanerReader = null;
+
+async function cargarQuagga() {
+  if (window.Quagga) return;
+  await new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.2.6/dist/quagga.min.js';
+    s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
 
 async function abrirEscaner() {
   document.getElementById('escanerResultado').textContent = 'Iniciando cámara...';
   document.getElementById('escanerNoEncontrado').style.display = 'none';
   abrirModal('modalEscaner');
+  await iniciarQuaggaCarrito();
+}
 
+async function iniciarQuaggaCarrito() {
+  _escanerActivo = true;
   try {
-    // Cargar ZXing dinámicamente si no está cargado
-    if (!window.ZXing) {
-      await new Promise((res, rej) => {
-        const s = document.createElement('script');
-        s.src = 'https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js';
-        s.onload = res; s.onerror = rej;
-        document.head.appendChild(s);
-      });
-    }
+    await cargarQuagga();
+    const viewport = document.getElementById('escanerVideo').parentElement;
 
-    const codeReader = new ZXing.BrowserMultiFormatReader();
-    _escanerReader = codeReader;
-    _escanerActivo = true;
+    await new Promise((res, rej) => {
+      Quagga.init({
+        inputStream: {
+          name: 'Live',
+          type: 'LiveStream',
+          target: viewport,
+          constraints: {
+            facingMode: 'environment',   // Cámara trasera
+            width:  { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        },
+        locator: { patchSize: 'medium', halfSample: true },
+        numOfWorkers: navigator.hardwareConcurrency > 2 ? 2 : 1,
+        frequency: 15,
+        decoder: {
+          readers: [
+            'ean_reader',        // EAN-13 (supermercado)
+            'ean_8_reader',      // EAN-8
+            'code_128_reader',   // Code 128
+            'code_39_reader',    // Code 39
+            'upc_reader',        // UPC-A
+            'upc_e_reader',      // UPC-E
+          ],
+        },
+        locate: true,
+      }, err => err ? rej(err) : res());
+    });
 
-    const videoEl = document.getElementById('escanerVideo');
+    Quagga.start();
     document.getElementById('escanerResultado').textContent = 'Apuntá al código de barras...';
 
-    await codeReader.decodeFromVideoDevice(null, videoEl, (result, err) => {
+    // Filtrar lecturas con confianza alta para evitar falsos positivos
+    const lecturas = {};
+    Quagga.onDetected(result => {
       if (!_escanerActivo) return;
-      if (result) {
-        const codigo = result.getText();
+      const codigo = result.codeResult.code;
+      const err    = result.codeResult.decodedCodes
+        ?.filter(x => x.error !== undefined)
+        .reduce((s, x) => s + x.error, 0) || 0;
+      if (err > 0.15) return; // Descartar lecturas con baja confianza
+      lecturas[codigo] = (lecturas[codigo] || 0) + 1;
+      if (lecturas[codigo] >= 2) { // Confirmar con 2 lecturas iguales
         manejarCodigoEscaneado(codigo);
       }
     });
+
   } catch(err) {
     document.getElementById('escanerResultado').textContent = '⚠️ No se pudo acceder a la cámara. Verificá los permisos.';
   }
 }
 
+function detenerQuaggaCarrito() {
+  _escanerActivo = false;
+  try { Quagga.offDetected(); Quagga.stop(); } catch(e) {}
+}
+
 async function manejarCodigoEscaneado(codigo) {
   _escanerActivo = false;
-  document.getElementById('escanerResultado').textContent = `✓ Código detectado: ${codigo}`;
+  detenerQuaggaCarrito();
+  document.getElementById('escanerResultado').textContent = `✓ Código: ${codigo}`;
 
-  // Buscar artículo por código en el catálogo
   const art = articulos.find(a =>
-    (a.codigo || '').toLowerCase() === codigo.toLowerCase() ||
-    (a.nombre || '').toLowerCase() === codigo.toLowerCase()
+    (a.codigo || '').toLowerCase() === codigo.toLowerCase()
   );
 
   if (art) {
@@ -2476,30 +2519,24 @@ async function manejarCodigoEscaneado(codigo) {
     agregarAlCarrito(art.id);
     mostrarAlerta(`"${art.nombre}" agregado ✓`, 'exito');
   } else {
-    // Buscar en Supabase por código
     const { data } = await sb.from('articulos')
-      .select('*')
-      .eq('empresa_id', empresaId)
-      .eq('activo', true)
-      .ilike('codigo', codigo)
-      .limit(1);
+      .select('*').eq('empresa_id', empresaId).eq('activo', true)
+      .ilike('codigo', codigo).limit(1);
 
     if (data?.length) {
-      // Actualizar cache local
       if (!articulos.find(a => a.id === data[0].id)) articulos.push(data[0]);
       cerrarEscaner();
       agregarAlCarrito(data[0].id);
       mostrarAlerta(`"${data[0].nombre}" agregado ✓`, 'exito');
     } else {
       const noEnc = document.getElementById('escanerNoEncontrado');
-      noEnc.textContent = `No se encontró ningún artículo con el código "${codigo}". Verificá que esté cargado en el sistema.`;
+      noEnc.textContent = `No se encontró artículo con código "${codigo}".`;
       noEnc.style.display = 'block';
-      // Reactivar escáner después de 2 segundos
       setTimeout(() => {
         if (document.getElementById('modalEscaner').classList.contains('activo')) {
-          _escanerActivo = true;
           noEnc.style.display = 'none';
           document.getElementById('escanerResultado').textContent = 'Apuntá al código de barras...';
+          iniciarQuaggaCarrito();
         }
       }, 2500);
     }
@@ -2507,16 +2544,7 @@ async function manejarCodigoEscaneado(codigo) {
 }
 
 function cerrarEscaner() {
-  _escanerActivo = false;
-  if (_escanerReader) {
-    try { _escanerReader.reset(); } catch(e) {}
-    _escanerReader = null;
-  }
-  const video = document.getElementById('escanerVideo');
-  if (video?.srcObject) {
-    video.srcObject.getTracks().forEach(t => t.stop());
-    video.srcObject = null;
-  }
+  detenerQuaggaCarrito();
   cerrarModal('modalEscaner');
 }
 

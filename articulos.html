@@ -501,26 +501,59 @@
       await iniciarCamaraRecep();
     }
 
+    async function cargarQuagga() {
+      if (window.Quagga) return;
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.2.6/dist/quagga.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }
+
     async function iniciarCamaraRecep() {
       document.getElementById('recepEscanerMsg').textContent = 'Iniciando cámara...';
       _recepActivo = true;
       try {
-        if (!window.ZXing) {
-          await new Promise((res, rej) => {
-            const s = document.createElement('script');
-            s.src = 'https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js';
-            s.onload = res; s.onerror = rej;
-            document.head.appendChild(s);
-          });
-        }
-        const codeReader = new ZXing.BrowserMultiFormatReader();
-        _recepReader = codeReader;
-        const video = document.getElementById('recepVideo');
-        document.getElementById('recepEscanerMsg').textContent = 'Apuntá al código de barras...';
-        await codeReader.decodeFromVideoDevice(null, video, (result, err) => {
-          if (!_recepActivo) return;
-          if (result) procesarCodigoRecep(result.getText());
+        await cargarQuagga();
+        const viewport = document.getElementById('recepVideo').parentElement;
+
+        await new Promise((res, rej) => {
+          Quagga.init({
+            inputStream: {
+              name: 'Live', type: 'LiveStream',
+              target: viewport,
+              constraints: {
+                facingMode: 'environment',
+                width:  { ideal: 1280 },
+                height: { ideal: 720 },
+              },
+            },
+            locator: { patchSize: 'medium', halfSample: true },
+            numOfWorkers: navigator.hardwareConcurrency > 2 ? 2 : 1,
+            frequency: 15,
+            decoder: {
+              readers: ['ean_reader','ean_8_reader','code_128_reader','code_39_reader','upc_reader','upc_e_reader'],
+            },
+            locate: true,
+          }, err => err ? rej(err) : res());
         });
+
+        Quagga.start();
+        document.getElementById('recepEscanerMsg').textContent = 'Apuntá al código de barras...';
+
+        const lecturas = {};
+        Quagga.onDetected(result => {
+          if (!_recepActivo) return;
+          const codigo = result.codeResult.code;
+          const err    = result.codeResult.decodedCodes
+            ?.filter(x => x.error !== undefined)
+            .reduce((s, x) => s + x.error, 0) || 0;
+          if (err > 0.15) return;
+          lecturas[codigo] = (lecturas[codigo] || 0) + 1;
+          if (lecturas[codigo] >= 2) procesarCodigoRecep(codigo);
+        });
+
       } catch(err) {
         document.getElementById('recepEscanerMsg').textContent = '⚠️ No se pudo acceder a la cámara. Verificá los permisos.';
       }
@@ -528,9 +561,7 @@
 
     function detenerCamaraRecep() {
       _recepActivo = false;
-      if (_recepReader) { try { _recepReader.reset(); } catch(e) {} _recepReader = null; }
-      const video = document.getElementById('recepVideo');
-      if (video?.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
+      try { Quagga.offDetected(); Quagga.stop(); } catch(e) {}
     }
 
     async function procesarCodigoRecep(codigo) {
