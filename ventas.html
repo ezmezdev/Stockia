@@ -2,7 +2,6 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTIiIGZpbGw9IiMxYTJmNmIiLz4KICA8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxMCw4KSI+CiAgICA8cmVjdCB4PSIyIiB5PSIyMiIgd2lkdGg9IjQwIiBoZWlnaHQ9IjI2IiByeD0iNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIzLjUiLz4KICAgIDxwYXRoIGQ9Ik0yIDIyIEw5IDEwIEwzNSAxMCBMNDIgMjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMy41IiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CiAgICA8bGluZSB4MT0iMjIiIHkxPSIyMiIgeDI9IjIyIiB5Mj0iNDgiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMi41IiBvcGFjaXR5PSIuNiIvPgogICAgPGxpbmUgeDE9IjIiIHkxPSIyMiIgeDI9IjQyIiB5Mj0iMjIiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIgb3BhY2l0eT0iLjQiLz4KICA8L2c+Cjwvc3ZnPg==">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Stockia — Ventas</title>
   <link rel="manifest" href="/manifest.json">
@@ -2445,6 +2444,44 @@ async function abrirEscaner() {
 
 async function iniciarQuaggaCarrito() {
   _escanerActivo = true;
+  const msgEl = document.getElementById('escanerResultado');
+
+  // ── Intentar API nativa primero (Chrome Android — muy rápida) ──
+  if ('BarcodeDetector' in window) {
+    try {
+      msgEl.textContent = 'Iniciando cámara...';
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      });
+      const video = document.getElementById('escanerVideo');
+      video.srcObject = stream;
+      await video.play();
+
+      const detector = new BarcodeDetector({
+        formats: ['ean_13','ean_8','code_128','code_39','upc_a','upc_e','itf']
+      });
+
+      msgEl.textContent = 'Apuntá al código de barras...';
+
+      const scan = async () => {
+        if (!_escanerActivo) return;
+        try {
+          const codes = await detector.detect(video);
+          if (codes.length > 0) {
+            manejarCodigoEscaneado(codes[0].rawValue);
+            return;
+          }
+        } catch(e) {}
+        requestAnimationFrame(scan);
+      };
+      requestAnimationFrame(scan);
+      return; // ← Sale aquí si API nativa funciona
+    } catch(err) {
+      // Si falla la API nativa, cae a Quagga
+    }
+  }
+
+  // ── Fallback: Quagga (Firefox, Safari, otros) ──
   try {
     await cargarQuagga();
     const viewport = document.getElementById('escanerVideo').parentElement;
@@ -2452,57 +2489,49 @@ async function iniciarQuaggaCarrito() {
     await new Promise((res, rej) => {
       Quagga.init({
         inputStream: {
-          name: 'Live',
-          type: 'LiveStream',
+          name: 'Live', type: 'LiveStream',
           target: viewport,
-          constraints: {
-            facingMode: 'environment',   // Cámara trasera
-            width:  { ideal: 1280 },
-            height: { ideal: 720 },
-          },
+          constraints: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
         },
         locator: { patchSize: 'medium', halfSample: true },
         numOfWorkers: navigator.hardwareConcurrency > 2 ? 2 : 1,
         frequency: 15,
         decoder: {
-          readers: [
-            'ean_reader',        // EAN-13 (supermercado)
-            'ean_8_reader',      // EAN-8
-            'code_128_reader',   // Code 128
-            'code_39_reader',    // Code 39
-            'upc_reader',        // UPC-A
-            'upc_e_reader',      // UPC-E
-          ],
+          readers: ['ean_reader','ean_8_reader','code_128_reader','code_39_reader','upc_reader','upc_e_reader'],
         },
         locate: true,
       }, err => err ? rej(err) : res());
     });
 
     Quagga.start();
-    document.getElementById('escanerResultado').textContent = 'Apuntá al código de barras...';
+    msgEl.textContent = 'Apuntá al código de barras...';
 
-    // Filtrar lecturas con confianza alta para evitar falsos positivos
     const lecturas = {};
     Quagga.onDetected(result => {
       if (!_escanerActivo) return;
       const codigo = result.codeResult.code;
-      const err    = result.codeResult.decodedCodes
+      const err = result.codeResult.decodedCodes
         ?.filter(x => x.error !== undefined)
         .reduce((s, x) => s + x.error, 0) || 0;
-      if (err > 0.15) return; // Descartar lecturas con baja confianza
+      if (err > 0.15) return;
       lecturas[codigo] = (lecturas[codigo] || 0) + 1;
-      if (lecturas[codigo] >= 2) { // Confirmar con 2 lecturas iguales
-        manejarCodigoEscaneado(codigo);
-      }
+      if (lecturas[codigo] >= 2) manejarCodigoEscaneado(codigo);
     });
 
   } catch(err) {
-    document.getElementById('escanerResultado').textContent = '⚠️ No se pudo acceder a la cámara. Verificá los permisos.';
+    msgEl.textContent = '⚠️ No se pudo acceder a la cámara. Verificá los permisos.';
   }
 }
 
 function detenerQuaggaCarrito() {
   _escanerActivo = false;
+  // Detener stream nativo si existe
+  const video = document.getElementById('escanerVideo');
+  if (video?.srcObject) {
+    video.srcObject.getTracks().forEach(t => t.stop());
+    video.srcObject = null;
+  }
+  // Detener Quagga si estaba activo
   try { Quagga.offDetected(); Quagga.stop(); } catch(e) {}
 }
 

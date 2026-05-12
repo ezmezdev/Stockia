@@ -2,7 +2,6 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTIiIGZpbGw9IiMxYTJmNmIiLz4KICA8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxMCw4KSI+CiAgICA8cmVjdCB4PSIyIiB5PSIyMiIgd2lkdGg9IjQwIiBoZWlnaHQ9IjI2IiByeD0iNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIzLjUiLz4KICAgIDxwYXRoIGQ9Ik0yIDIyIEw5IDEwIEwzNSAxMCBMNDIgMjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMy41IiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CiAgICA8bGluZSB4MT0iMjIiIHkxPSIyMiIgeDI9IjIyIiB5Mj0iNDgiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMi41IiBvcGFjaXR5PSIuNiIvPgogICAgPGxpbmUgeDE9IjIiIHkxPSIyMiIgeDI9IjQyIiB5Mj0iMjIiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIgb3BhY2l0eT0iLjQiLz4KICA8L2c+Cjwvc3ZnPg==">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Stockia — Artículos</title>
   <!-- v4.0 -->
@@ -513,8 +512,42 @@
     }
 
     async function iniciarCamaraRecep() {
-      document.getElementById('recepEscanerMsg').textContent = 'Iniciando cámara...';
+      const msgEl = document.getElementById('recepEscanerMsg');
+      msgEl.textContent = 'Iniciando cámara...';
       _recepActivo = true;
+
+      // ── API nativa (Chrome Android) ──
+      if ('BarcodeDetector' in window) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+          });
+          const video = document.getElementById('recepVideo');
+          video.srcObject = stream;
+          await video.play();
+
+          const detector = new BarcodeDetector({
+            formats: ['ean_13','ean_8','code_128','code_39','upc_a','upc_e','itf']
+          });
+
+          msgEl.textContent = 'Apuntá al código de barras...';
+
+          const scan = async () => {
+            if (!_recepActivo) return;
+            try {
+              const codes = await detector.detect(video);
+              if (codes.length > 0) { procesarCodigoRecep(codes[0].rawValue); return; }
+            } catch(e) {}
+            requestAnimationFrame(scan);
+          };
+          requestAnimationFrame(scan);
+          return;
+        } catch(err) {
+          // Cae a Quagga
+        }
+      }
+
+      // ── Fallback: Quagga ──
       try {
         await cargarQuagga();
         const viewport = document.getElementById('recepVideo').parentElement;
@@ -524,11 +557,7 @@
             inputStream: {
               name: 'Live', type: 'LiveStream',
               target: viewport,
-              constraints: {
-                facingMode: 'environment',
-                width:  { ideal: 1280 },
-                height: { ideal: 720 },
-              },
+              constraints: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
             },
             locator: { patchSize: 'medium', halfSample: true },
             numOfWorkers: navigator.hardwareConcurrency > 2 ? 2 : 1,
@@ -541,13 +570,13 @@
         });
 
         Quagga.start();
-        document.getElementById('recepEscanerMsg').textContent = 'Apuntá al código de barras...';
+        msgEl.textContent = 'Apuntá al código de barras...';
 
         const lecturas = {};
         Quagga.onDetected(result => {
           if (!_recepActivo) return;
           const codigo = result.codeResult.code;
-          const err    = result.codeResult.decodedCodes
+          const err = result.codeResult.decodedCodes
             ?.filter(x => x.error !== undefined)
             .reduce((s, x) => s + x.error, 0) || 0;
           if (err > 0.15) return;
@@ -556,12 +585,17 @@
         });
 
       } catch(err) {
-        document.getElementById('recepEscanerMsg').textContent = '⚠️ No se pudo acceder a la cámara. Verificá los permisos.';
+        msgEl.textContent = '⚠️ No se pudo acceder a la cámara. Verificá los permisos.';
       }
     }
 
     function detenerCamaraRecep() {
       _recepActivo = false;
+      const video = document.getElementById('recepVideo');
+      if (video?.srcObject) {
+        video.srcObject.getTracks().forEach(t => t.stop());
+        video.srcObject = null;
+      }
       try { Quagga.offDetected(); Quagga.stop(); } catch(e) {}
     }
 
