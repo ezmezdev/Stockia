@@ -60,6 +60,12 @@ function esKiosco()       { return getTipoNegocio() === 'kiosco_almacen'; }
 // CÓDIGOS ÚNICOS
 // ============================================================
 async function siguienteCodigo(tipo, empresaId) {
+  // Para ventas usar la función atómica con lock (evita duplicados por carrera)
+  if (tipo === 'venta') {
+    const { data, error } = await sb.rpc('reservar_codigo_venta', { p_empresa_id: empresaId });
+    if (!error && data) return data;
+    // Fallback a la función legacy si reservar_codigo_venta no está aún migrada
+  }
   const fn = { venta:'siguiente_codigo_venta', cliente:'siguiente_codigo_cliente', proveedor:'siguiente_codigo_proveedor' }[tipo];
   if (!fn) return '1';
   const { data } = await sb.rpc(fn, { p_empresa_id: empresaId });

@@ -982,8 +982,16 @@ async function guardarVenta() {
     if (error) throw error;
     if (pagado>0&&vd?.id)
       await sb.from('pagos').insert({empresa_id:empresaId,venta_id:vd.id,monto:pagado,fecha,notas:'Pago inicial'});
-    if (artSel)
-      await sb.from('articulos').update({stock:Math.max(0,(artSel.stock||0)-cant)}).eq('id',artId);
+    if (artSel) {
+      // Stock atómico (evita race conditions con múltiples operadores)
+      const { data: rs } = await sb.rpc('descontar_stock', { p_articulo_id: artId, p_cantidad: cant });
+      if (rs?.[0]?.exito) {
+        const artCache = articulos.find(a => a.id === artId);
+        if (artCache) artCache.stock = rs[0].stock_nuevo;
+      } else if (rs?.[0]) {
+        mostrarAlerta('⚠️ ' + rs[0].mensaje, 'info');
+      }
+    }
     mostrarAlerta('Venta registrada ✓','exito');
     cerrarModal('modalVenta');
     await cargarVentas();
@@ -1289,6 +1297,13 @@ function limpiarErrCarrCodigo() {
 async function guardarCarrito() {
   if (!_carrito.length) { mostrarAlerta('Agregá al menos un artículo', 'error'); return; }
 
+  // Validación: ningún ítem con precio en 0
+  const conPrecio0 = _carrito.find(i => Number(i.precio) <= 0);
+  if (conPrecio0) {
+    mostrarAlerta(`"${conPrecio0.articuloNombre}" tiene precio en 0. Corregilo antes de confirmar.`, 'error');
+    return;
+  }
+
   const fecha    = document.getElementById('carrFecha').value || hoyISO();
   const notas    = document.getElementById('carrNotas').value.trim()||null;
   const vendedor = document.getElementById('carrVendedor').value.trim()||null;
@@ -1370,10 +1385,16 @@ async function guardarCarrito() {
     const { error: ei } = await sb.from('venta_items').insert(items);
     if (ei) throw ei;
 
-    // 3. Descontar stock
+    // 3. Descontar stock atómicamente (evita race conditions)
     for (const item of _carrito) {
-      const art = articulos.find(a => a.id === item.articuloId);
-      if (art) await sb.from('articulos').update({ stock: Math.max(0, art.stock - item.cantidad) }).eq('id', item.articuloId);
+      const { data: rs } = await sb.rpc('descontar_stock', {
+        p_articulo_id: item.articuloId,
+        p_cantidad:    item.cantidad
+      });
+      if (rs?.[0]?.exito) {
+        const art = articulos.find(a => a.id === item.articuloId);
+        if (art) art.stock = rs[0].stock_nuevo;
+      }
     }
 
     // 4. Registrar pago solo por los ítems al contado
@@ -1412,17 +1433,52 @@ async function cargarClientesSelect() {
     clientes.map(c=>`<option value="${c.id}">${c.nombre}${c.codigo?' #'+c.codigo:''}</option>`).join('');
 }
 
-async function cargarVentas() {
-  document.getElementById('tablaVentas').innerHTML='<tr><td colspan="8"><div class="cargando"><div class="spinner"></div></div></td></tr>';
-  // Limpiar cache de ítems al recargar
-  Object.keys(_itemsCache).forEach(k => delete _itemsCache[k]);
-  const{data,error}=await sb.from('ventas').select('*,clientes(nombre,codigo)')
-    .eq('empresa_id',empresaId)
-    .order('fecha_venta',{ascending:false})
-    .order('created_at',{ascending:false});
-  if(error){document.getElementById('tablaVentas').innerHTML=`<tr><td colspan="8"><div class="estado-vacio"><div class="estado-vacio-icono">⚠️</div><div class="estado-vacio-titulo">Error: ${error.message}</div></div></td></tr>`;return;}
-  todasVentas=data||[];
+// Paginación
+const VENTAS_POR_PAGINA = 150;
+let _paginaActual = 0;
+let _totalVentasDB = 0;
+let _filtrosActivos = false;
+
+async function cargarVentas(reset = true) {
+  if (reset) {
+    _paginaActual = 0;
+    todasVentas = [];
+    Object.keys(_itemsCache).forEach(k => delete _itemsCache[k]);
+    document.getElementById('tablaVentas').innerHTML='<tr><td colspan="8"><div class="cargando"><div class="spinner"></div></div></td></tr>';
+  }
+
+  // Obtener cuenta total una sola vez por reset
+  if (reset) {
+    const { count } = await sb.from('ventas').select('id', { count: 'exact', head: true }).eq('empresa_id', empresaId);
+    _totalVentasDB = count || 0;
+  }
+
+  // Traer página actual con select específico (sin '*')
+  const desde = _paginaActual * VENTAS_POR_PAGINA;
+  const hasta = desde + VENTAS_POR_PAGINA - 1;
+
+  const { data, error } = await sb.from('ventas')
+    .select('id,empresa_id,cliente_id,articulo_id,articulo_nombre,cantidad,precio_unitario,total,forma_pago,estado,pagado,saldo,es_cuotas,cantidad_cuotas,recargo_pct,mora_pct,notas,codigo_venta,fecha_venta,es_carrito,created_at,updated_at,clientes(nombre,codigo)')
+    .eq('empresa_id', empresaId)
+    .order('fecha_venta', { ascending: false })
+    .order('created_at',  { ascending: false })
+    .range(desde, hasta);
+
+  if (error) {
+    document.getElementById('tablaVentas').innerHTML = `<tr><td colspan="8"><div class="estado-vacio"><div class="estado-vacio-icono">⚠️</div><div class="estado-vacio-titulo">Error: ${error.message}</div></div></td></tr>`;
+    return;
+  }
+
+  // Si es reset, reemplazar; si es paginación, agregar
+  if (reset) todasVentas = data || [];
+  else todasVentas = [...todasVentas, ...(data || [])];
+
   aplicarFiltros();
+}
+
+async function cargarMasVentas() {
+  _paginaActual++;
+  await cargarVentas(false);
 }
 
 function aplicarFiltros() {
@@ -1430,6 +1486,7 @@ function aplicarFiltros() {
   const estado=document.getElementById('filtroEstado').value;
   const pago=document.getElementById('filtroPago').value;
   const orden=document.getElementById('filtroOrden').value;
+  _filtrosActivos = !!(q || estado || pago);
   let lista=todasVentas;
   if(q) lista=lista.filter(v=>(v.clientes?.nombre||'').toLowerCase().includes(q)||(v.articulo_nombre||'').toLowerCase().includes(q)||(v.codigo_venta||'').includes(q));
   if(estado) lista=lista.filter(v=>v.estado===estado);
@@ -1518,9 +1575,18 @@ function renderTabla(lista) {
         </td>
       </tr>`;
   }).join('');
-}
 
-// ── Toggle expandir/colapsar fila ────────────────────────────
+  // Botón "Cargar más" si hay más ventas en la base
+  const cargadas = todasVentas.length;
+  if (!_filtrosActivos && cargadas < _totalVentasDB) {
+    const cols = (kiosco&&!tieneClientes) ? 7 : 8;
+    const restantes = _totalVentasDB - cargadas;
+    tbody.innerHTML += `<tr><td colspan="${cols}" style="text-align:center;padding:16px;background:#f8faff">
+      <div style="font-size:12px;color:var(--texto-suave);margin-bottom:8px">Mostrando ${cargadas} de ${_totalVentasDB} ventas</div>
+      <button class="btn btn-sm btn-ghost" onclick="cargarMasVentas()">📥 Cargar ${Math.min(VENTAS_POR_PAGINA, restantes)} ventas más</button>
+    </td></tr>`;
+  }
+}
 async function toggleDetalle(ventaId, cols) {
   const filaDetalle = document.getElementById(`detalle-${ventaId}`);
   const btnExpand   = document.getElementById(`btn-expand-${ventaId}`);
@@ -1771,7 +1837,7 @@ async function devolverItem(itemId, ventaId, articuloId, cantidad, subtotal, nom
   // 2. Devolver stock
   if (articuloId) {
     const art=articulos.find(a=>a.id===articuloId);
-    if(art) await sb.from('articulos').update({stock:(art.stock||0)+cantidad}).eq('id',articuloId);
+    if(art){const{data:sn}=await sb.rpc('sumar_stock',{p_articulo_id:articuloId,p_cantidad:cantidad});if(sn!=null&&sn>=0)art.stock=sn;}
   }
 
   // 3. Recalcular total de la venta desde los ítems activos
@@ -1872,14 +1938,14 @@ async function confirmarEliminarVenta(ventaId,nombreArticulo) {
     for(const it of items||[]){
       if(it.articulo_id){
         const art=articulos.find(a=>a.id===it.articulo_id);
-        if(art) await sb.from('articulos').update({stock:(art.stock||0)+it.cantidad}).eq('id',it.articulo_id);
+        if(art){const{data:sn}=await sb.rpc('sumar_stock',{p_articulo_id:it.articulo_id,p_cantidad:it.cantidad});if(sn!=null&&sn>=0)art.stock=sn;}
       }
     }
     await sb.from('venta_items').delete().eq('venta_id',ventaId);
   } else {
     if(v?.articulo_id&&v?.cantidad){
       const art=articulos.find(a=>a.id===v.articulo_id);
-      if(art) await sb.from('articulos').update({stock:(art.stock||0)+v.cantidad}).eq('id',v.articulo_id);
+      if(art){const{data:sn}=await sb.rpc('sumar_stock',{p_articulo_id:v.articulo_id,p_cantidad:v.cantidad});if(sn!=null&&sn>=0)art.stock=sn;}
     }
   }
 
