@@ -124,32 +124,36 @@
     .descarga-bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
 
     /* ── CARRITO (kiosco) ── */
+    /* ── Carrito — mobile-first ─────────────────────────────── */
     .carrito-buscador{display:flex;gap:8px;margin-bottom:12px;}
-    .carrito-buscador input{flex:1;}
+    .carrito-buscador input{flex:1;font-size:16px !important;}
     .carrito-tabla{width:100%;border-collapse:collapse;margin-bottom:12px;}
     .carrito-tabla th{font-size:11px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.4px;padding:6px 8px;border-bottom:2px solid var(--borde);text-align:left;}
     .carrito-tabla td{padding:8px;border-bottom:1px solid var(--borde);font-size:13px;vertical-align:middle;}
     .carrito-tabla tr:last-child td{border-bottom:none;}
     .carrito-vacio{text-align:center;padding:24px;color:var(--texto-suave);font-size:13px;}
-    .carrito-total-bar{background:var(--azul-nav);color:#fff;border-radius:var(--r-md);padding:14px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
-    .carrito-total-label{font-size:13px;opacity:.85;}
-    .carrito-total-valor{font-size:24px;font-weight:800;}
-    .cant-control{display:flex;align-items:center;gap:6px;}
-    .cant-btn{width:26px;height:26px;border-radius:50%;border:1px solid var(--borde);background:#fff;cursor:pointer;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;color:var(--texto);line-height:1;}
-    .cant-btn:hover{background:var(--bg);}
-    .cant-num{font-weight:700;min-width:20px;text-align:center;}
-
-    /* ── Panel cuotas por ítem ── */
-    .item-pago-select{font-size:12px;padding:4px 8px;border:1px solid var(--borde);border-radius:var(--r-sm);font-family:var(--font);background:#fff;cursor:pointer;max-width:160px;}
-    .item-cuotas-panel{background:#f8faff;border:1px solid #c7d7f5;border-radius:var(--r-md);padding:14px 16px;font-size:12px;width:100%;box-sizing:border-box;}
-    .item-cuotas-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
-    .item-cuotas-campo label{font-size:11px;font-weight:700;color:var(--texto-suave);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px;}
-    .item-cuotas-campo input{width:100%;padding:5px 8px;border:1px solid var(--borde);border-radius:var(--r-sm);font-size:13px;font-weight:600;font-family:var(--font);}
-    .item-cuotas-resumen{background:#fff;border:1px solid #c7d7f5;border-radius:var(--r-sm);padding:8px 10px;font-size:12px;line-height:1.7;}
-    .item-cuotas-resumen .r-label{color:var(--texto-suave);}
-    .item-cuotas-resumen .r-valor{font-weight:700;float:right;}
-    .item-cuotas-resumen .r-mora{color:var(--naranja);font-size:11px;margin-top:4px;padding-top:4px;border-top:1px dashed #e5e7eb;}
-    .carrito-tabla td.td-pago{vertical-align:top;min-width:180px;}
+    .carrito-total-bar{background:var(--azul-nav);color:#fff;border-radius:var(--r-md);padding:16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+    .carrito-total-label{font-size:14px;opacity:.85;}
+    .carrito-total-valor{font-size:28px;font-weight:800;letter-spacing:-0.5px;}
+    .cant-control{display:flex;align-items:center;gap:4px;}
+    .cant-btn{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--borde);background:#fff;cursor:pointer;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;color:var(--texto);line-height:1;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+    .cant-btn:active{background:var(--bg);transform:scale(.95);}
+    .cant-num{font-size:15px;font-weight:700;min-width:24px;text-align:center;}
+    .carrito-tabla td.td-pago{vertical-align:top;}
+    @media(max-width:599px){
+      #modalCarrito .modal-overlay{align-items:flex-end !important;padding:0 !important;}
+      #modalCarrito .modal{margin:0 !important;border-radius:20px 20px 0 0 !important;max-height:92vh !important;position:fixed !important;bottom:0 !important;left:0 !important;right:0 !important;max-width:100% !important;padding:16px 14px 24px !important;}
+      .carrito-tabla thead{display:none;}
+      .carrito-tabla tbody tr{display:block;background:var(--card);border-radius:var(--r-md);border:1px solid var(--borde);margin-bottom:8px;padding:10px 12px;}
+      .carrito-tabla tbody tr:last-child{border:1px solid var(--borde);}
+      .carrito-tabla td{display:flex;justify-content:space-between;align-items:center;border:none;padding:3px 0;font-size:13px;}
+      .carrito-tabla td:first-child{font-weight:700;font-size:14px;display:block;margin-bottom:6px;border-bottom:1px solid var(--borde);padding-bottom:6px;}
+      #btnGuardarCarrito{font-size:16px !important;padding:16px !important;border-radius:12px !important;}
+      #carrBusqueda{font-size:16px !important;}
+      .carrito-total-bar{position:sticky;bottom:0;margin:8px -14px -24px;border-radius:0 !important;padding:14px 16px;}
+      .cant-btn{width:40px;height:40px;font-size:20px;}
+    }
+    @media(min-width:600px){.cant-btn{width:28px;height:28px;font-size:16px;}.cant-num{font-size:14px;}}
     .item-devuelto{opacity:.45;text-decoration:line-through;}
 
     @media(min-width:600px){.resumen-cards{grid-template-columns:repeat(3,1fr);}}
@@ -539,7 +543,7 @@
         placeholder="Escribí para buscar artículo..."
         oninput="filtrarArticulosCarrito()"
         autocomplete="off">
-      <button class="btn btn-sm btn-ghost" onclick="abrirEscaner()" title="Escanear código de barras" style="white-space:nowrap;flex-shrink:0">📷 Escanear</button>
+      <button class="btn btn-sm btn-ghost" onclick="abrirEscaner()" title="Escanear código de barras" style="white-space:nowrap;flex-shrink:0;min-height:44px;padding:0 14px">📷 Escanear</button>
     </div>
     <!-- Resultados de búsqueda -->
     <div id="carrResultados" style="display:none;max-height:150px;overflow-y:auto;border:1px solid var(--borde);border-radius:var(--r-md);margin-bottom:12px;background:#fff;"></div>
@@ -587,7 +591,7 @@
 
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="cerrarModal('modalCarrito')">Cancelar</button>
-      <button class="btn btn-acento" id="btnGuardarCarrito" onclick="guardarCarrito()">✓ Confirmar venta</button>
+      <button class="btn btn-acento" id="btnGuardarCarrito" onclick="guardarCarrito()" style="min-height:48px;font-size:15px;font-weight:700">✓ Confirmar venta</button>
     </div>
   </div>
 </div>
